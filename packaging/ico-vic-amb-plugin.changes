@@ -1,3 +1,6 @@
+* Fri Apr 26 19:04:32 UTC 2013 - tracy.graydon@intel.com
+- Moving source from master branch (unused for IVI) to 2.0alpha-wayland branch 
+
 * Fri Apr 26 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> 2e12f9a
 - Import initial.
 
