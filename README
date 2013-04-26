@@ -1,0 +1,32 @@
+README
+
+===How to use ico-vic-amb-plugin.===
+==Necessary files.==
+ /etc/ambd/config (Configuration file of ambd)
+ /etc/ambd/AMBformat.conf (Configuration file of ico-vic-amb-plugin.)
+
+==Change==
+ /etc/ambd/config
+    Configuration file is written JSON format.
+    In order to use ico-vic-amb-plugin, it is necessary to rewrite value of "sources".
+
+    =Default
+    "sources" : [
+        {
+            "name" : "ExampleSource",
+            "path" : "/usr/lib/automotive-message-broker/examplesourceplugin.so"
+        }
+    ],
+
+    =Using ico-vic-amb-plugin
+    "sources" : [
+        {
+            "name" : "VehicleSource",
+            "path" : "/usr/lib/automotive-message-broker/vehicleplugin.so",
+            "configfile" : "/etc/ambd/AMBformat.conf"
+        }
+    ],
+
+
+ /etc/ambd/AMBformat.conf
+    Nothing.
