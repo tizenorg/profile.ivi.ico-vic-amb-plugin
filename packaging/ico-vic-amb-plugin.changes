@@ -1,3 +1,6 @@
+* Fri May 24 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/2.0alpha-wayland/20130426.191358@04b4211
+- Bug fix for TIVI-992: Collection of spelling error.(WARTER -> WATER) 
+
 * Fri Apr 26 19:04:32 UTC 2013 - tracy.graydon@intel.com
 - Moving source from master branch (unused for IVI) to 2.0alpha-wayland branch 
 
