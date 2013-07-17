@@ -37,9 +37,9 @@ enum CommonStatus {
 /**
  * The size of status(Used in the data message.)
  */
-static const int STATUSSIZE = StandardMessage::BUFSIZE
-                              - StandardMessage::KEYEVENTTYPESIZE 
-                              - sizeof(timeval) - sizeof(int);
+static const int STATUSSIZE = StandardMessage::BUFSIZE - 
+                              StandardMessage::KEYEVENTTYPESIZE - 
+                              sizeof(timeval) - sizeof(int);
 
 /**
  * The data portion of the data message.

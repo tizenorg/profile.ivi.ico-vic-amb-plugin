@@ -28,7 +28,7 @@
 
 #include <libwebsockets.h>
 
-#include "config.h"
+#include "ambconfig.h"
 #include "controlwebsocket.h"
 #include "messageformat.h"
 
@@ -138,7 +138,7 @@ public:
      * @return Success : true Failure : false
      */
     bool
-    initialize(VICCommunicator *com, Config *conf);
+    initialize(VICCommunicator *com, AMBConfig *conf);
     /**
      * This function issues a request to send vehicle information to the MW.
      *
@@ -178,14 +178,14 @@ public:
      */
 
     void
-    registDestination(int commid);
+    registDestination(ControlWebsocket::ServerProtocol type, int commid);
     /**
      * Unmapped instances and destination socket ID.
      * 
      * @param commid Socket ID.
      */
     void
-    unregistDestination(int commid);
+    unregistDestination(ControlWebsocket::ServerProtocol type, int commid);
 private:
 
     void

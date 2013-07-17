@@ -21,14 +21,14 @@
 #include <vector>
 
 #include "abstractpropertytype.h"
-#include "config.h"
+#include "ambconfig.h"
 #include "controlwebsocketclient.h"
 #include "controlwebsocketclientapp.h"
 
 const std::string CONFPATH = "/etc/ambd/AMBformat.conf";
 
 struct MWInfo {
-    VehicleInfoDefine::Status::DataType type;
+    DataType type;
     int typesize;
     bool isCustom;
 };
@@ -46,7 +46,7 @@ public:
     initialize() = 0;
 protected:
 
-    Config conf;
+    AMBConfig conf;
     int loadscenario;
 };
 

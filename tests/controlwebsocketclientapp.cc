@@ -17,8 +17,10 @@
  * 
  */
 #include <string.h>
+#include <unistd.h>
 
 #include <iostream>
+#include <sstream>
 
 #include "debugout.h"
 
@@ -31,11 +33,11 @@ pthread_mutex_t ControlWebsocketClientApp::mutex_scenario =
 pthread_cond_t ControlWebsocketClientApp::cond_scenario =
         PTHREAD_COND_INITIALIZER;
 std::string ControlWebsocketClientApp::vehiclename_scenario = "";
+void *ControlWebsocketClientApp::wsiapp = NULL;
 
 ControlWebsocketClientApp::ControlWebsocketClientApp()
 {
     mutex = PTHREAD_MUTEX_INITIALIZER;
-    protocollist[1] = {NULL, NULL, 0};
 }
 
 ControlWebsocketClientApp::~ControlWebsocketClientApp()
@@ -46,24 +48,23 @@ bool
 ControlWebsocketClientApp::initialize(int port)
 {
     DebugOut(10) << "ControlWebsocketClientApp initialize.(" << port << ")\n";
-    protocollist[0] = {"http-only", ControlWebsocketClientApp::callback_receive, 0};
-
-    context = libwebsocket_create_context(CONTEXT_PORT_NO_LISTEN, "lo",
-                                          protocollist,
-                                          libwebsocket_internal_extensions,
-                                          NULL, NULL, -1, -1, 0);
+    stringstream address;
+    address.str("");
+    address << "ws://127.0.0.1:" << port;
+    context = ico_uws_create_context(address.str().c_str(), "http-only");
     if (context == NULL) {
         return false;
     }
-    socket = libwebsocket_client_connect(context, "127.0.0.1", port, 0, "/",
-                                         "localhost", "websocket",
-                                         protocollist[0].name, -1);
-    if (socket == NULL) {
+    if (ico_uws_set_event_cb(context,
+                             ControlWebsocketClientApp::callback_receive, NULL)
+        != 0) {
+        DebugOut() << "ControlWebsocket[" << type << "]"
+                   << " couldn't set callback function." << std::endl;
         return false;
     }
     if (pthread_create(&threadid, NULL, ControlWebsocketClientApp::run,
                        (void*)this) == -1) {
-        libwebsocket_context_destroy(context);
+        ico_uws_close(context);
         return false;
     }
     return true;
@@ -82,16 +83,12 @@ ControlWebsocketClientApp::send(std::string type, std::string name,
     jdata.timestamp = timestamp;
     vector<JsonData> dataarray;
     dataarray.push_back(jdata);
-    memcpy(buf + LWS_SEND_BUFFER_PRE_PADDING,
-           jsonmsg.encode(type, name, "transactionid", dataarray),
+    memcpy(buf, jsonmsg.encode(type, name, "transactionid", dataarray),
            JsonMessage::BUFSIZE);
     int i = 0;
-    while (buf[(i++) + LWS_SEND_BUFFER_PRE_PADDING] != '\0') ;
-    int ret = libwebsocket_write(
-            socket,
-            reinterpret_cast<unsigned char*>(buf + LWS_SEND_BUFFER_PRE_PADDING),
-            i, LWS_WRITE_TEXT);
-    DebugOut(10) << "libwebsocket_write return " << ret << "\n";
+    while (buf[(i++)] != '\0')
+        ;
+    ico_uws_send(context, wsiapp, reinterpret_cast<unsigned char*>(buf), i);
     pthread_mutex_unlock(&mutex);
     return true;
 }
@@ -106,45 +103,57 @@ ControlWebsocketClientApp::receive(char *keyeventtype, timeval recordtime,
 void
 ControlWebsocketClientApp::observation()
 {
-    int ret = 0;
-    while (ret >= 0) {
-        ret = libwebsocket_service(context, 100);
-        if (ret != 0) {
-            break;
-        }
+    while (true) {
+        ico_uws_service(context);
+        usleep(50);
     }
 }
 
-int
+void
 ControlWebsocketClientApp::callback_receive(
-        libwebsocket_context *context, libwebsocket *wsi,
-        libwebsocket_callback_reasons reason, void *user, void *in, size_t len)
+        const struct ico_uws_context *context, const ico_uws_evt_e event,
+        const void *id, const ico_uws_detail *detail, void *user_data)
 {
-    switch (reason) {
-    case LWS_CALLBACK_CLIENT_RECEIVE:
+    switch (event) {
+    case ICO_UWS_EVT_OPEN:
+    {
+        ControlWebsocketClientApp::wsiapp = const_cast<void*>(id);
+        break;
+    }
+    case ICO_UWS_EVT_ERROR:
+        break;
+    case ICO_UWS_EVT_CLOSE:
+    {
+        ControlWebsocketClientApp::wsiapp = NULL;
+        break;
+    }
+    case ICO_UWS_EVT_RECEIVE:
     {
         JsonMessage jmsg;
-        jmsg.decode(std::string(reinterpret_cast<char*>(in)), len);
+        char *recvbuf =
+                reinterpret_cast<char*>(detail->_ico_uws_message.recv_data);
+        jmsg.decode(recvbuf, detail->_ico_uws_message.recv_len);
         std::vector<JsonData> jdataarray;
         jdataarray = jmsg.getData();
         for (auto itr = jdataarray.begin(); itr != jdataarray.end(); itr++) {
             DebugOut(10) << "[R]: " << (*itr).propertyName << " , "
                          << (*itr).timestamp << " , " << (*itr).value << std::endl;
             if (((*itr).propertyName
-                == ControlWebsocketClientApp::vehiclename_scenario)
-                || (jmsg.getName()
-                == ControlWebsocketClientApp::vehiclename_scenario)) {
+                  == ControlWebsocketClientApp::vehiclename_scenario) || 
+                (jmsg.getName()
+                 == ControlWebsocketClientApp::vehiclename_scenario)) {
                 pthread_cond_signal(&ControlWebsocketClientApp::cond_scenario);
             }
         }
         break;
     }
+    case ICO_UWS_EVT_ADD_FD:
+        break;
+    case ICO_UWS_EVT_DEL_FD:
+        break;
     default:
-    {
         break;
     }
-    }
-    return 0;
 }
 
 void *

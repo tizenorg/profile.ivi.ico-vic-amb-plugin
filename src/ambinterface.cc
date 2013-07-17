@@ -23,7 +23,7 @@
 #include "debugout.h"
 
 #include "ambinterface.h"
-#include "config.h"
+#include "ambconfig.h"
 #include "convert.h"
 #include "mwinterface.h"
 #include "viccommunicator.h"
@@ -32,7 +32,7 @@ extern "C" AbstractSource *
 create(AbstractRoutingEngine* routingengine, map<string, string> config)
 {
     AMBIF *ambif = new AMBIF(routingengine, config);
-    Config *conf = new Config();
+    AMBConfig *conf = new AMBConfig();
     conf->readConfig(config["configfile"]);
     VICCommunicator *communicator = new VICCommunicator();
     MWIF *mwif = new MWIF();
@@ -90,7 +90,7 @@ AMBIF::getPropertyAsync(AsyncPropertyReply *reply)
 {
     reply->success = false;
     DebugOut() << "AMBIF " << "Get Request property : " << reply->property
-               << std::endl;
+            << std::endl;
     lock();
     AMBVehicleInfo *vehicleinfo = find(reply->property);
     DebugOut() << "AMBIF " << "Find Data : " << reply->property << std::endl;
@@ -166,7 +166,7 @@ AMBIF::setConfiguratin(std::map<std::string, std::string> config)
 }
 
 bool
-AMBIF::initialize(VICCommunicator *comm, Config *conf)
+AMBIF::initialize(VICCommunicator *comm, AMBConfig *conf)
 {
     DebugOut() << "AMBIF Initialize\n";
     communicator = comm;
@@ -185,7 +185,7 @@ AMBIF::initialize(VICCommunicator *comm, Config *conf)
             if (vi.value == nullptr) {
                 if (!registVehicleInfo(vi.name, (*itr2).type,
                                        (*itr2).defaultvalue)) {
-                    DebugOut() << "AMBIF Initialize Couldn't regist property[" 
+                    DebugOut() << "AMBIF Initialize Couldn't regist property["
                                << vi.name << "]\n";
                     continue;
                 }
@@ -195,8 +195,8 @@ AMBIF::initialize(VICCommunicator *comm, Config *conf)
             }
             vehicleinfoArray.push_back(vi);
             propertylist.push_back(vi.name);
-            DebugOut() << "AMBIF Initialize regist propertyname = " 
-                       << vi.name << "\n";
+            DebugOut() << "AMBIF Initialize regist propertyname = " << vi.name
+                       << "\n";
         }
     }
     routingEngine->setSupported(supported(), this);
@@ -243,14 +243,15 @@ AMBIF::setPropertyRequest(AMBVehicleInfo *vehicleinfo)
     AsyncSetPropertyRequest request;
     request.property = vehicleinfo->name;
     request.value = vehicleinfo->value;
-    request.completed = [](AsyncPropertyReply *reply) {
-        if (reply->success) {
-            DebugOut()<<"AMBIF" << reply->property << ":" << reply->value->toString() << std::endl;
-        }
-        else {
-            DebugOut()<<"AMBIF" << reply->property << " isn't registered." << std::endl;
-        }
-    };
+    request.completed =
+            [](AsyncPropertyReply *reply) {
+                if (reply->success) {
+                    DebugOut()<<"AMBIF" << reply->property << ":" << reply->value->toString() << std::endl;
+                }
+                else {
+                    DebugOut()<<"AMBIF" << reply->property << " isn't registered." << std::endl;
+                }
+            };
     AsyncPropertyReply *reply = routingEngine->setProperty(request);
     if (reply != NULL) {
         delete reply;
@@ -297,70 +298,68 @@ AMBIF::requestUpdate(AMBVehicleInfo *vehicleinfo)
 }
 
 bool
-AMBIF::registVehicleInfo(std::string propertyName,
-                         VehicleInfoDefine::Status::DataType type, string value)
+AMBIF::registVehicleInfo(std::string propertyName, DataType type, string value)
 {
-    DebugOut() << "AMBIF registVehicleInfo(" << propertyName 
-               << ")\n";
+    DebugOut() << "AMBIF registVehicleInfo(" << propertyName << ")\n";
     VehicleProperty::PropertyTypeFactoryCallback factory;
     switch (type) {
-    case VehicleInfoDefine::Status::INT:
+    case INT:
     {
         factory = [value]() {
             return new BasicPropertyType<int>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::DOUBLE:
+    case DOUBLE:
     {
         factory = [value]() {
             return new BasicPropertyType<double>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::CHAR:
+    case CHAR:
     {
         factory = [value]() {
             return new BasicPropertyType<char>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::INT16:
+    case INT16:
     {
         factory = [value]() {
             return new BasicPropertyType<int16_t>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::UINT16:
+    case UINT16:
     {
         factory = [value]() {
             return new BasicPropertyType<uint16_t>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::UINT32:
+    case UINT32:
     {
         factory = [value]() {
             return new BasicPropertyType<uint32_t>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::INT64:
+    case INT64:
     {
         factory = [value]() {
             return new BasicPropertyType<int64_t>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::UINT64:
+    case UINT64:
     {
         factory = [value]() {
             return new BasicPropertyType<uint64_t>(value);
         };
         break;
     }
-    case VehicleInfoDefine::Status::BOOL:
+    case BOOL:
     {
         factory = [value]() {
             return new BasicPropertyType<bool>(value);
@@ -379,7 +378,7 @@ AMBVehicleInfo *
 AMBIF::find(std::string propertyName)
 {
     for (auto itr = vehicleinfoArray.begin(); itr != vehicleinfoArray.end();
-         itr++) {
+            itr++) {
         if ((*itr).name == propertyName) {
             return &(*itr);
         }

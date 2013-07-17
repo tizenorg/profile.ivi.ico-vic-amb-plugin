@@ -22,12 +22,12 @@
 #include <string>
 #include <vector>
 
-#include "config.h"
+#include "ambconfig.h"
 
 /**
  * This class handles the data in the configuration file.
  */
-class ConfigAMB : public Config {
+class ConfigAMB {
 public:
     /**
      * Constructor.
@@ -39,13 +39,16 @@ public:
     ~ConfigAMB();
     bool
     readConfig(std::string confpath);
+
     int
     getPort();
+
     std::string
     getAMBformatPath();
 private:
     bool
     parseJson(std::string config);
+
     std::string ambformatpath;
     int port;
 };

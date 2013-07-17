@@ -17,8 +17,10 @@
  * 
  */
 #include <string.h>
+#include <unistd.h>
 
 #include <iostream>
+#include <sstream>
 
 #include "debugout.h"
 
@@ -32,11 +34,11 @@ pthread_mutex_t ControlWebsocketClient::mutex_scenario =
         PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t ControlWebsocketClient::cond_scenario = PTHREAD_COND_INITIALIZER;
 std::string ControlWebsocketClient::vehiclename_scenario = "";
+void *ControlWebsocketClient::wsi[4] = {NULL, NULL, NULL, NULL};
 
 ControlWebsocketClient::ControlWebsocketClient()
 {
     mutex = PTHREAD_MUTEX_INITIALIZER;
-    protocollist[1] = {NULL, NULL, 0};
 }
 
 ControlWebsocketClient::~ControlWebsocketClient()
@@ -49,44 +51,58 @@ ControlWebsocketClient::initialize(int port,
 {
     DebugOut(10) << "ControlWebsocketClient initialize.(" << port << ")\n";
     type = stype;
+    stringstream address, protocol;
+    address.str("");
+    address << "ws://127.0.0.1:" << port;
+    protocol.str("");
     switch (type) {
     case ControlWebsocket::DATA_STANDARD:
     {
-        protocollist[0] = {"standarddatamessage-only", ControlWebsocketClient::callback_receive, 0};
+        protocol << "standarddatamessage-only";
         break;
     }
-    case ControlWebsocket::CONTROL_STANDARD : {
-        protocollist[0] = {"standardcontrolmessage-only", ControlWebsocketClient::callback_receive, 0};
+    case ControlWebsocket::CONTROL_STANDARD:
+    {
+        protocol << "standardcontrolmessage-only";
         break;
     }
-    case ControlWebsocket::DATA_CUSTOM : {
-        protocollist[0] = {"customdatamessage-only", ControlWebsocketClient::callback_receive, 0};
+    case ControlWebsocket::DATA_CUSTOM:
+    {
+        protocol << "customdatamessage-only";
         break;
     }
-    case ControlWebsocket::CONTROL_CUSTOM : {
-        protocollist[0] = {"customcontrolmessage-only", ControlWebsocketClient::callback_receive, 0};
+    case ControlWebsocket::CONTROL_CUSTOM:
+    {
+        protocol << "customcontrolmessage-only";
         break;
     }
-    default : {
+    default:
+    {
         return false;
     }
     }
-    context = libwebsocket_create_context(CONTEXT_PORT_NO_LISTEN, "lo",
-                                          protocollist,
-                                          libwebsocket_internal_extensions,
-                                          NULL, NULL, -1, -1, 0);
+    context = ico_uws_create_context(address.str().c_str(),
+                                     protocol.str().c_str());
     if (context == NULL) {
         return false;
     }
-    socket = libwebsocket_client_connect(context, "127.0.0.1", port, 0, "/",
-                                         "localhost", "websocket",
-                                         protocollist[0].name, -1);
-    if (socket == NULL) {
+    if (ico_uws_set_event_cb(context, ControlWebsocketClient::callback_receive,
+                             ((void *)type)) != 0) {
+        DebugOut() << "ControlWebsocket[" << type << "]"
+                   << " couldn't set callback function." << std::endl;
         return false;
     }
+    /*
+     socket = libwebsocket_client_connect(context, "127.0.0.1", port, 0, "/",
+     "localhost", "websocket",
+     protocollist[0].name, -1);
+     if (socket == NULL) {
+     return false;
+     }
+     */
     if (pthread_create(&threadid, NULL, ControlWebsocketClient::run,
                        (void*)this) == -1) {
-        libwebsocket_context_destroy(context);
+        ico_uws_close(context);
         return false;
     }
     return true;
@@ -102,17 +118,17 @@ ControlWebsocketClient::send(char *keyeventtype, timeval time, void *data,
     case ControlWebsocket::DATA_STANDARD:
     case ControlWebsocket::DATA_CUSTOM:
     {
-        memcpy(buf + LWS_SEND_BUFFER_PRE_PADDING,
+        memcpy(buf,
                datamsg.encode(keyeventtype, time,
                               *(reinterpret_cast<DataOpt*>(data))),
-               len);
+                              len);
         DebugOut(10) << keyeventtype << " encode\n";
         break;
     }
     case ControlWebsocket::CONTROL_STANDARD:
     case ControlWebsocket::CONTROL_CUSTOM:
     {
-        memcpy(buf + LWS_SEND_BUFFER_PRE_PADDING,
+        memcpy(buf,
                eventmsg.encode(keyeventtype, time,
                                *(reinterpret_cast<EventOpt*>(data))),
                len);
@@ -124,11 +140,8 @@ ControlWebsocketClient::send(char *keyeventtype, timeval time, void *data,
         break;
     }
     }
-    int ret = libwebsocket_write(
-            socket,
-            reinterpret_cast<unsigned char*>(buf + LWS_SEND_BUFFER_PRE_PADDING),
-            len, LWS_WRITE_BINARY);
-    DebugOut(10) << "libwebsocket_write return " << ret << "\n";
+    ico_uws_send(context, wsi[type], reinterpret_cast<unsigned char*>(buf),
+                 len);
     pthread_mutex_unlock(&mutex);
     return true;
 }
@@ -144,26 +157,41 @@ ControlWebsocketClient::receive(char *keyeventtype, timeval recordtime,
 void
 ControlWebsocketClient::observation()
 {
-    int ret = 0;
-    while (ret >= 0) {
-        ret = libwebsocket_service(context, 100);
-        if (ret != 0) {
-            break;
-        }
+    while (true) {
+        ico_uws_service(context);
+        usleep(50);
     }
 }
 
-int
-ControlWebsocketClient::callback_receive(libwebsocket_context *context,
-                                         libwebsocket *wsi,
-                                         libwebsocket_callback_reasons reason,
-                                         void *user, void *in, size_t len)
+void
+ControlWebsocketClient::callback_receive(const struct ico_uws_context *context,
+                                         const ico_uws_evt_e event,
+                                         const void *id,
+                                         const ico_uws_detail *detail,
+                                         void *user_data)
 {
-    switch (reason) {
-    case LWS_CALLBACK_CLIENT_RECEIVE:
+    switch (event) {
+    case ICO_UWS_EVT_OPEN:
+    {
+        int idx = reinterpret_cast<int>(user_data);
+        DebugOut() << "Open. wsi index = " << idx << "\n";
+        ControlWebsocketClient::wsi[idx] = const_cast<void*>(id);
+        break;
+    }
+    case ICO_UWS_EVT_ERROR:
+        break;
+    case ICO_UWS_EVT_CLOSE:
+    {
+        int idx = reinterpret_cast<int>(user_data);
+        ControlWebsocketClient::wsi[idx] = NULL;
+        break;
+    }
+    case ICO_UWS_EVT_RECEIVE:
     {
         DataMessage msg;
-        msg.decode(reinterpret_cast<char*>(in), len);
+        char *recvbuf =
+                reinterpret_cast<char*>(detail->_ico_uws_message.recv_data);
+        msg.decode(recvbuf, detail->_ico_uws_message.recv_len);
         DebugOut(10) << "[R]: " << msg.getKeyEventType() << " , "
                      << msg.getRecordtime().tv_sec << "."
                      << msg.getRecordtime().tv_usec << " , ";
@@ -173,12 +201,13 @@ ControlWebsocketClient::callback_receive(libwebsocket_context *context,
         }
         break;
     }
+    case ICO_UWS_EVT_ADD_FD:
+        break;
+    case ICO_UWS_EVT_DEL_FD:
+        break;
     default:
-    {
         break;
     }
-    }
-    return 0;
 }
 
 void *

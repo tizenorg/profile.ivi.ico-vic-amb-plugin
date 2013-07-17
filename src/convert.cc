@@ -42,7 +42,7 @@ Converter::~Converter()
 }
 
 bool
-Converter::initialize(Config *conf)
+Converter::initialize(AMBConfig *conf)
 {
     vector<VehicleInfoDefine> dtableArray;
     dtableArray = conf->getVehicleInfoConfig();
@@ -78,11 +78,14 @@ Converter::convertMWtoAMB(MWVehicleInfo *mwvehicleinfo,
             int arrayidx = 0;
             int statusidx = 0;
             for (auto itr2 = (*itr).ambdataarray.begin();
-                    itr2 != (*itr).ambdataarray.end(); itr2++) {
+                 itr2 != (*itr).ambdataarray.end(); itr2++) {
                 ambvehicleinfo[arrayidx].name = (*itr2).ambname;
                 ambvehicleinfo[arrayidx].value =
                         VehicleProperty::getPropertyTypeForPropertyNameValue(
                                 ambvehicleinfo[arrayidx].name, "0");
+                if (ambvehicleinfo[arrayidx].value == NULL) {
+                    continue;
+                }
                 ambvehicleinfo[arrayidx].value->timestamp = toDouble(
                         mwvehicleinfo->recordtime);
                 char statusbuf[(*itr2).typesize];
@@ -93,13 +96,12 @@ Converter::convertMWtoAMB(MWVehicleInfo *mwvehicleinfo,
                                  (*itr2).type));
                 statusidx += sizeof(statusbuf);
                 DebugOut() << "Converter convertMWtoAMB ambname = "
-                           << (*itr2).ambname << "(" 
-                           << ambvehicleinfo[arrayidx].value->toString() 
-                           << ")\n";
+                           << (*itr2).ambname << "("
+                           << ambvehicleinfo[arrayidx].value->toString() << ")\n";
                 arrayidx++;
                 if (arrayidx == arraysize
                         && arraysize
-                               < static_cast<int>((*itr).ambdataarray.size())) {
+                                < static_cast<int>((*itr).ambdataarray.size())) {
                     ret = -1;
                     break;
                 }
@@ -118,14 +120,14 @@ Converter::convertAMBtoMW(AMBVehicleInfo *ambvehicleinfo,
     int ret = 0;
     int statusidx = 0;
     for (auto itr = converttablelist.begin(); itr != converttablelist.end();
-         itr++) {
+            itr++) {
         statusidx = 0;
         DebugOut(10) << "Converter convertAMBtoMW mwname = " << (*itr).mwname
-                << "\n";
+                     << "\n";
         for (auto itr2 = (*itr).ambdataarray.begin();
              itr2 != (*itr).ambdataarray.end(); itr2++) {
             DebugOut(10) << "Converter convertAMBtoMW ambname = "
-                       << (*itr2).ambname << "\n";
+                         << (*itr2).ambname << "\n";
             if ((*itr2).ambname == ambvehicleinfo->name) {
                 DebugOut() << "Converter convertAMBtoMW ambname = "
                            << (*itr2).ambname << "\n";
@@ -133,14 +135,13 @@ Converter::convertAMBtoMW(AMBVehicleInfo *ambvehicleinfo,
                 mwvehicleinfo->recordtime = toTimeval(
                         ambvehicleinfo->value->timestamp);
                 if (ambvehicleinfo->value == NULL) {
-                    DebugOut() << "Converter convertAMBtoMW " 
+                    DebugOut() << "Converter convertAMBtoMW "
                                << "ambvehicleinfo->value is NULL\n";
                     ret = -1;
                 }
                 else {
                     DebugOut() << "Converter check data "
-                               << ambvehicleinfo->value->toString() 
-                               << std::endl;
+                               << ambvehicleinfo->value->toString() << std::endl;
                     toBinary(ambvehicleinfo->name, ambvehicleinfo->value,
                              (*itr2).typesize, (*itr2).type,
                              mwvehicleinfo->status + statusidx);
@@ -155,74 +156,73 @@ Converter::convertAMBtoMW(AMBVehicleInfo *ambvehicleinfo,
 }
 
 string
-Converter::toString(string ambname, char *data, int size,
-                    VehicleInfoDefine::Status::DataType type)
+Converter::toString(string ambname, char *data, int size, DataType type)
 {
     if (find(specialconvertlist.begin(), specialconvertlist.end(), ambname)
-        != specialconvertlist.end()) {
+            != specialconvertlist.end()) {
         return specialConvertMWtoAMB(ambname, data, size, type);
     }
     stringstream sstr;
     sstr.str("");
     sstr.precision(10);
     switch (type) {
-    case VehicleInfoDefine::Status::INT:
+    case INT:
     {
         int val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::DOUBLE:
+    case DOUBLE:
     {
         double val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::CHAR:
+    case CHAR:
     {
         char val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::INT16:
+    case INT16:
     {
         int16_t val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::UINT16:
+    case UINT16:
     {
         uint16_t val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::UINT32:
+    case UINT32:
     {
         uint32_t val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::INT64:
+    case INT64:
     {
         int64_t val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::UINT64:
+    case UINT64:
     {
         uint64_t val;
         memcpy(&val, data, size);
         sstr << val;
         break;
     }
-    case VehicleInfoDefine::Status::BOOL:
+    case BOOL:
     {
         bool val;
         memcpy(&val, data, size);
@@ -239,12 +239,12 @@ Converter::toString(string ambname, char *data, int size,
 
 int
 Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
-                    VehicleInfoDefine::Status::DataType type, char *buf)
+                    DataType type, char *buf)
 {
     stringstream sstr;
     sstr.str("");
     if (find(specialconvertlist.begin(), specialconvertlist.end(), ambname)
-        != specialconvertlist.end()) {
+            != specialconvertlist.end()) {
         sstr << specialConvertAMBtoMW(ambname, value);
     }
     else {
@@ -252,7 +252,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
     }
     DebugOut(10) << "Converter toBinary " << sstr.str() << "\n";
     switch (type) {
-    case VehicleInfoDefine::Status::INT:
+    case INT:
     {
         int val;
         sstr >> val;
@@ -260,7 +260,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<int> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::DOUBLE:
+    case DOUBLE:
     {
         double val;
         sstr >> val;
@@ -268,7 +268,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<double> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::CHAR:
+    case CHAR:
     {
         char val;
         sstr >> val;
@@ -276,7 +276,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<char> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::INT16:
+    case INT16:
     {
         int16_t val;
         sstr >> val;
@@ -284,7 +284,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<int16_t> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::UINT16:
+    case UINT16:
     {
         uint16_t val;
         sstr >> val;
@@ -292,7 +292,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<uint16_t> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::UINT32:
+    case UINT32:
     {
         uint32_t val;
         sstr >> val;
@@ -300,7 +300,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<uint32_t> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::INT64:
+    case INT64:
     {
         int64_t val;
         sstr >> val;
@@ -308,7 +308,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<int64_t> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::UINT64:
+    case UINT64:
     {
         uint64_t val;
         sstr >> val;
@@ -316,7 +316,7 @@ Converter::toBinary(string ambname, AbstractPropertyType *value, int size,
         DebugOut() << "Converter toBinary<uint64_t> " << val << "\n";
         break;
     }
-    case VehicleInfoDefine::Status::BOOL:
+    case BOOL:
     {
         int tmpval;
         bool val;
@@ -363,8 +363,8 @@ Converter::specialConvertAMBtoMW(std::string ambname,
     stringstream retstr;
     retstr.str("");
     if (ambname == VehicleProperty::TransmissionShiftPosition) {
-        switch (boost::any_cast<Transmission::TransmissionPositions>
-                (value->anyValue())) {
+        switch (boost::any_cast < Transmission::TransmissionPositions
+                > (value->anyValue())) {
         case Transmission::Neutral:
         {
             retstr << 2;
@@ -442,12 +442,12 @@ Converter::specialConvertAMBtoMW(std::string ambname,
         }
         }
         DebugOut() << "Converter specialConvertAMBtoMW"
-                   << "(TransmissionShiftPosition): "
-                   << value->toString() << "->" << retstr.str() << std::endl;
+                   << "(TransmissionShiftPosition): " << value->toString() << "->"
+                   << retstr.str() << std::endl;
     }
     else if (ambname == VehicleProperty::TransmissionGearPosition) {
-        switch (boost::any_cast<Transmission::TransmissionPositions> 
-                (value->anyValue())) {
+        switch (boost::any_cast < Transmission::TransmissionPositions
+                > (value->anyValue())) {
         case Transmission::Neutral:
         {
             retstr << 64;
@@ -494,8 +494,8 @@ Converter::specialConvertAMBtoMW(std::string ambname,
         }
         }
         DebugOut() << "Converter specialConvertAMBtoMW"
-                   << "(TransmissionGearPosition): "
-                   << value->toString() << "->" << retstr.str() << std::endl;
+                   << "(TransmissionGearPosition): " << value->toString() << "->"
+                   << retstr.str() << std::endl;
     }
     else if (ambname == VehicleProperty::TransmissionMode) {
         retstr << value->toString();
@@ -511,7 +511,7 @@ Converter::specialConvertAMBtoMW(std::string ambname,
 
 std::string
 Converter::specialConvertMWtoAMB(std::string ambname, char *data, int size,
-                                 VehicleInfoDefine::Status::DataType type)
+                                 DataType type)
 {
     stringstream retstr;
     retstr.str("");
@@ -600,8 +600,8 @@ Converter::specialConvertMWtoAMB(std::string ambname, char *data, int size,
         }
         }
         DebugOut() << "Converter specialConvertMWtoAMB"
-                   << "(TransmissionShiftPosition): "
-                   << val << "->" << retstr.str() << std::endl;
+                   << "(TransmissionShiftPosition): " << val << "->"
+                   << retstr.str() << std::endl;
     }
     else if (ambname == VehicleProperty::TransmissionGearPosition) {
         int val;
@@ -643,8 +643,8 @@ Converter::specialConvertMWtoAMB(std::string ambname, char *data, int size,
         }
         }
         DebugOut() << "Converter specialConvertMWtoAMB"
-                   << "(TransmissionGearPosition): "
-                   << val << "->" << retstr.str() << std::endl;
+                   << "(TransmissionGearPosition): " << val << "->" << retstr.str()
+                   << std::endl;
     }
     else if (ambname == VehicleProperty::TransmissionMode) {
         int val;

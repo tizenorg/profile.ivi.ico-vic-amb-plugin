@@ -1,34 +1,10 @@
-/**
- * Copyright (C) 2012  TOYOTA MOTOR CORPORATION.
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- * 
- */
 #include <string.h>
 
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 
-#ifdef JSONC
 #include <json/json.h>
-#else
-#include <json-glib/json-glib.h>
-
-#include "nullptr.h"
-#endif
 
 #include "debugout.h"
 
@@ -37,7 +13,8 @@
 using std::string;
 using std::vector;
 
-ConfigAMB::ConfigAMB() : port(23000)
+ConfigAMB::ConfigAMB() :
+        port(23000)
 {
 }
 
@@ -74,102 +51,72 @@ bool
 ConfigAMB::parseJson(string config)
 {
     bool ret = false;
-    JsonParser* parser = json_parser_new();
-    GError* error = nullptr;
-    if (!json_parser_load_from_data(parser, config.c_str(), config.length(),
-                                    &error)) {
-        DebugOut() << "Failed to load config: " << error->message;
+    json_object *rootobject;
+    json_tokener *tokener = json_tokener_new();
+    enum json_tokener_error err;
+    do {
+        rootobject = json_tokener_parse_ex(tokener, config.c_str(),
+                                           config.length());
+    } while ((err = json_tokener_get_error(tokener)) == json_tokener_continue);
+
+    if (err != json_tokener_success) {
+        std::cerr << "Error: " << json_tokener_error_desc(err) << "\n";
         return ret;
     }
-
-    JsonNode* node = json_parser_get_root(parser);
-
-    if (node == nullptr) {
-        DebugOut() << "Unable to get JSON root object";
+    json_object *configobject = json_object_object_get(rootobject, "sources");
+    if (!configobject) {
+        std::cerr << "Error getting ConfigAMB\n";
         return ret;
     }
-
-    JsonReader* reader = json_reader_new(node);
-
-    if (reader == nullptr) {
-        DebugOut() << "Unable to create JSON reader";
-        return ret;
-    }
-
-    DebugOut(10) << "Config members: " << json_reader_count_members(reader)
-                 << endl;
-
-    json_reader_read_member(reader, "sources");
-
-    const GError * srcReadError = json_reader_get_error(reader);
-
-    if (srcReadError != nullptr) {
-        DebugOut() << "Error getting sources member: " << srcReadError->message
-                   << endl;
-        return ret;
-    }
-
-    g_assert(json_reader_is_array(reader));
-
-    std::string name = "";
-    for (int i = 0; i < json_reader_count_elements(reader); i++) {
-        json_reader_read_element(reader, i);
-
-        json_reader_read_member(reader, "name");
-        name = std::string(json_reader_get_string_value(reader));
-        json_reader_end_member(reader);
-
-        if (name != "VehicleSource") {
+    array_list *configlist = json_object_get_array(configobject);
+    for (int i = 0; i < array_list_length(configlist); i++) {
+        json_object *obj = reinterpret_cast<json_object*>(array_list_get_idx(
+                configlist, i));
+        json_object *nameobj = json_object_object_get(obj, "name");
+        if ("VehicleSource" != string(json_object_get_string(nameobj))) {
+            std::cout << "Loop:" << json_object_get_string(nameobj) << "\n";
             continue;
         }
-        json_reader_read_member(reader, "configfile");
-        ambformatpath = std::string(json_reader_get_string_value(reader));
-        json_reader_end_member(reader);
-        json_reader_end_element(reader);
+        json_object *conffileobj = json_object_object_get(obj, "configfile");
+        if (!conffileobj) {
+            std::cerr << "Error: conffileobj = NULL" << std::endl;
+            break;
+        }
+        else {
+            ambformatpath = std::string(json_object_get_string(conffileobj));
+        }
         ret = true;
+        break;
     }
-
-    json_reader_end_member(reader);
     if (!ret) {
         std::cerr << "Can't find AMBformat path.\n";
         return ret;
     }
 
-    ///read the sinks:
-
-    json_reader_read_member(reader, "sinks");
-
-    for (int i = 0; i < json_reader_count_elements(reader); i++) {
-        json_reader_read_element(reader, i);
-
-        json_reader_read_member(reader, "name");
-        name = std::string(json_reader_get_string_value(reader));
-        json_reader_end_member(reader);
-
-        if (name != "WebsocketSink") {
+    configobject = json_object_object_get(rootobject, "sinks");
+    if (!configobject) {
+        std::cerr << "Error getting ConfigAMB\n";
+        return ret;
+    }
+    configlist = json_object_get_array(configobject);
+    for (int i = 0; i < array_list_length(configlist); i++) {
+        json_object *obj = reinterpret_cast<json_object*>(array_list_get_idx(
+                configlist, i));
+        json_object *nameobj = json_object_object_get(obj, "name");
+        if ("WebsocketSink" != string(json_object_get_string(nameobj))) {
             continue;
         }
-
-        if (json_reader_read_member(reader, "port")) {
-            port = json_reader_get_int_value(reader);
-            json_reader_end_member(reader);
+        json_object *portobj = json_object_object_get(obj, "port");
+        if (!portobj) {
+            port = 23000;
+            std::cout << "Default Port = " << port << std::endl;
         }
         else {
-            port = 23000;
+            port = json_object_get_int(portobj);
+            std::cout << "Read Port = " << port << std::endl;
         }
-
-        json_reader_end_element(reader);
+        ret = true;
+        break;
     }
-
-    json_reader_end_member(reader);
-
-    ///TODO: this will probably explode:
-
-    if (error) {
-        g_error_free(error);
-    }
-
-    g_object_unref(reader);
-    g_object_unref(parser);
     return ret;
 }

@@ -19,6 +19,9 @@
 #include <pthread.h>
 #include <string.h>
 
+#include <algorithm>
+#include <sstream>
+
 #include "debugout.h"
 
 #include "controlwebsocket.h"
@@ -51,16 +54,19 @@ template<class T>
          * @return ID
          */
         int
-        getID(T value)
+        getID(T value, int key)
         {
             pthread_mutex_lock(&mutex);
             for (auto itr = commidmap.begin(); itr != commidmap.end(); itr++) {
-                if ((*itr).second == value) {
+                if ((void*)(*itr).second == (void*)value) {
                     pthread_mutex_unlock(&mutex);
                     return (*itr).first;
                 }
             }
-            int newid = generateID();
+            int newid = key;
+            if (newid == -1) {
+                newid = generateID();
+            }
             commidmap.insert(make_pair(newid, value));
             pthread_mutex_unlock(&mutex);
             return newid;
@@ -103,7 +109,8 @@ template<class T>
             return ret;
         }
     private:
-        GenerateCommID() : mutex(PTHREAD_MUTEX_INITIALIZER)
+        GenerateCommID() :
+                mutex(PTHREAD_MUTEX_INITIALIZER)
         {
         }
 
@@ -128,72 +135,84 @@ template<class T>
                 return 1;
             }
             int count = 1;
-            for (auto itr = commidmap.begin(); itr != commidmap.end(); itr++) {
-                if (itr->first != count) {
-                    return count;
-                }
+            while (commidmap.find(count) == commidmap.end()) {
                 count++;
             }
-            return count + 1;
+            return count;
         }
 
         std::map<int, T> commidmap;
         pthread_mutex_t mutex;
     };
 
-MWIF *ControlWebsocket::mwif = NULL;
-
 ControlWebsocket::ControlWebsocket()
 {
     mutex = PTHREAD_MUTEX_INITIALIZER;
-    protocollist[1] = {NULL, NULL, 0};
 }
 
 ControlWebsocket::~ControlWebsocket()
 {
     socketmap.clear();
+    pollfds.clear();
 }
 
 bool
-ControlWebsocket::initialize(int port, enum ServerProtocol stype)
+ControlWebsocket::initialize(int port, enum ServerProtocol stype, MWIF *mwif_)
 {
+    type = stype;
     DebugOut() << "ControlWebsocket[" << type << "]" << " initialize.(" << port
                << ")\n";
-    type = stype;
+    stringstream address, protocol;
+    address.str("");
+    protocol.str("");
+    address << ":" << port;
     switch (type) {
     case DATA_STANDARD:
     {
-        protocollist[0] = {"standarddatamessage-only", ControlWebsocket::callback_receive, 0};
+        protocol << "standarddatamessage-only";
         break;
     }
-    case CONTROL_STANDARD : {
-        protocollist[0] = {"standardcontrolmessage-only", ControlWebsocket::callback_receive, 0};
+    case CONTROL_STANDARD:
+    {
+        protocol << "standardcontrolmessage-only";
         break;
     }
-    case DATA_CUSTOM : {
-        protocollist[0] = {"customdatamessage-only", ControlWebsocket::callback_receive, 0};
+    case DATA_CUSTOM:
+    {
+        protocol << "customdatamessage-only";
         break;
     }
-    case CONTROL_CUSTOM : {
-        protocollist[0] = {"customcontrolmessage-only", ControlWebsocket::callback_receive, 0};
+    case CONTROL_CUSTOM:
+    {
+        protocol << "customcontrolmessage-only";
         break;
     }
-    default : {
+    default:
+    {
         return false;
     }
-}
-    context = libwebsocket_create_context(port, "lo", protocollist,
-                                          libwebsocket_internal_extensions,
-                                          NULL, NULL, -1, -1, 0);
+    }
+
+    context = ico_uws_create_context(address.str().c_str(),
+                                     protocol.str().c_str());
     if (context == NULL) {
-        DebugOut() << "ControlWebsocket[" << type << "]" 
+        DebugOut() << "ControlWebsocket[" << type << "]"
                    << " couldn't create libwebsockets_context." << std::endl;
         return false;
     }
+    mwif = mwif_;
+    container.mwif = mwif;
+    container.type = type;
+    if (ico_uws_set_event_cb(context, ControlWebsocket::callback_receive,
+                             (void*)&container) != 0) {
+        DebugOut() << "ControlWebsocket[" << type << "]"
+                   << " couldn't set callback function." << std::endl;
+        return false;
+    }
     if (pthread_create(&threadid, NULL, ControlWebsocket::run, (void*)this)
-        == -1) {
-        libwebsocket_context_destroy(context);
-        DebugOut() << "ControlWebsocket[" << type << "]" 
+            == -1) {
+        ico_uws_close(context);
+        DebugOut() << "ControlWebsocket[" << type << "]"
                    << " couldn't create thread." << std::endl;
         return false;
     }
@@ -206,12 +225,11 @@ ControlWebsocket::send(int commid, char *keyeventtype, timeval time, void *data,
 {
     DebugOut() << "ControlWebsocket[" << type << "]" << " send data(" << commid
                << "," << keyeventtype << ") len = " << len << std::endl;
-    libwebsocket *wsi = NULL;
+    void *wsi = NULL;
     if (socketmap.find(commid) == socketmap.end()) {
         if (!registSocket(commid)) {
-            DebugOut() << "ControlWebsocket[" << type << "]" 
-                       << " can't regist socket(" << commid << ")" 
-                       << std::endl;
+            DebugOut() << "ControlWebsocket[" << type << "]"
+                       << " can't regist socket(" << commid << ")" << std::endl;
             return false;
         }
     }
@@ -224,16 +242,13 @@ ControlWebsocket::send(int commid, char *keyeventtype, timeval time, void *data,
     }
     pthread_mutex_lock(&mutex);
     memset(buf, 0, sizeof(buf));
-    memcpy(buf + LWS_SEND_BUFFER_PRE_PADDING,
+    memcpy(buf,
            datamsg.encode(keyeventtype, time,
                           *(reinterpret_cast<DataOpt*>(data))),
-           len);
+                          len);
     DebugOut() << "ControlWebsocket Send Data[" << keyeventtype << "]"
                << std::endl;
-    libwebsocket_write(
-            wsi,
-            reinterpret_cast<unsigned char*>(buf + LWS_SEND_BUFFER_PRE_PADDING),
-            len, LWS_WRITE_BINARY);
+    ico_uws_send(context, wsi, reinterpret_cast<unsigned char*>(buf), len);
     pthread_mutex_unlock(&mutex);
     return true;
 }
@@ -280,34 +295,29 @@ ControlWebsocket::receive(int commid, char *keyeventtype, timeval recordtime,
 void
 ControlWebsocket::observation()
 {
-    int ret = 0;
-    while (ret >= 0) {
-        ret = libwebsocket_service(context, 100);
-        if (ret != 0) {
-            break;
+    int ret;
+    while (true) {
+        ret = poll(&pollfds[0], pollfds.size(), -1);
+        if (ret < 0) {
+            DebugOut() << "Error: poll(" << strerror(errno) << ")\n";
+            continue;
         }
+        ico_uws_service(context);
     }
 }
 
 bool
 ControlWebsocket::registSocket(int commid)
 {
-    if (socketmap.find(commid) != socketmap.end()) {
+    DebugOut() << "socketmap[" << type << "]!!\n" << std::flush;
+    GenerateCommID<void*> *idserver = GenerateCommID<void*>::getInstance();
+    if (idserver->getValue(commid) != NULL) {
+        socketmap[commid] = idserver->getValue(commid);
+        pollfd fds;
+        fds.fd = commid;
+        fds.events = POLLIN | POLLERR;
+        pollfds.push_back(fds);
         return true;
-    }
-    GenerateCommID<libwebsocket*> *idserver =
-            GenerateCommID<libwebsocket*>::getInstance();
-    libwebsocket *wsi = idserver->getValue(commid);
-    if (wsi == NULL) {
-        return false;
-    }
-    libwebsocket_protocols *protocol =
-            const_cast<libwebsocket_protocols*>(libwebsockets_get_protocol(wsi));
-    if (protocol != NULL) {
-        if (context == protocol[0].owning_server) {
-            socketmap[commid] = wsi;
-            return true;
-        }
     }
     return false;
 }
@@ -319,62 +329,67 @@ ControlWebsocket::unregistSocket(int commid)
         return false;
     }
     socketmap.erase(commid);
-    GenerateCommID<libwebsocket*> *idserver =
-            GenerateCommID<libwebsocket*>::getInstance();
+    for (auto itr = pollfds.begin(); itr != pollfds.end(); itr++) {
+        if ((*itr).fd == commid) {
+            itr = pollfds.erase(itr);
+            break;
+        }
+    }
+    GenerateCommID<void*> *idserver = GenerateCommID<void*>::getInstance();
     return idserver->unsetID(commid);
 }
 
-int
-ControlWebsocket::callback_receive(libwebsocket_context *context,
-                                   libwebsocket *wsi,
-                                   libwebsocket_callback_reasons reason,
-                                   void *user, void *in, size_t len)
+void
+ControlWebsocket::callback_receive(const struct ico_uws_context *context,
+                                   const ico_uws_evt_e event, const void *id,
+                                   const ico_uws_detail *detail,
+                                   void *user_data)
 {
-    DebugOut(10) << "Reason(" << reason << ")\n";
-    switch (reason) {
-    case LWS_CALLBACK_ESTABLISHED:
-    {
-        GenerateCommID<libwebsocket*> *idserver =
-                GenerateCommID<libwebsocket*>::getInstance();
-        int id = idserver->getID(wsi);
-        DebugOut() << "ControlWebsocket callback_receive Insert ID is " << id
-                   << "\n";
+    user_datacontainer *container = static_cast<user_datacontainer*>(user_data);
+    switch (event) {
+    case ICO_UWS_EVT_OPEN:
         break;
-    }
-    case LWS_CALLBACK_CLOSED:
-    {
-        GenerateCommID<libwebsocket*> *idserver =
-                GenerateCommID<libwebsocket*>::getInstance();
-        int id = idserver->getID(wsi);
-        idserver->unsetID(id);
-        DebugOut() << "ControlWebsocket callback_receive Delete ID is " << id
-                   << "\n";
-        ControlWebsocket::mwif->unregistDestination(id);
+    case ICO_UWS_EVT_ERROR:
         break;
-    }
-    case LWS_CALLBACK_RECEIVE:
+    case ICO_UWS_EVT_CLOSE:
+        break;
+    case ICO_UWS_EVT_RECEIVE:
     {
-        GenerateCommID<libwebsocket*> *idserver =
-                GenerateCommID<libwebsocket*>::getInstance();
-        int id = idserver->getID(wsi);
+        GenerateCommID<void*> *idserver = GenerateCommID<void*>::getInstance();
+        int commid = idserver->getID(const_cast<void*>(id), -1);
         StandardMessage msg;
-        char *buf = reinterpret_cast<char*>(in);
-        msg.decode(buf, len);
-        DebugOut() << "ControlWebsocket callback_receive Receive message : "
+        char *buf = reinterpret_cast<char*>(detail->_ico_uws_message.recv_data);
+        msg.decode(buf, detail->_ico_uws_message.recv_len);
+        DebugOut() << "ControlWebsocket callback_receive Receive message["
+                   << detail->_ico_uws_message.recv_len << "] : "
                    << msg.getKeyEventType() << "," << msg.getRecordtime().tv_sec
                    << "\n";
-        ControlWebsocket::mwif->recvRawdata(
-                id, msg.getKeyEventType(), msg.getRecordtime(),
+        container->mwif->recvRawdata(
+                commid, msg.getKeyEventType(), msg.getRecordtime(),
                 (buf + StandardMessage::KEYEVENTTYPESIZE + sizeof(timeval)),
-                len);
+                detail->_ico_uws_message.recv_len);
+        break;
+    }
+    case ICO_UWS_EVT_ADD_FD:
+    {
+        GenerateCommID<void*> *idserver = GenerateCommID<void*>::getInstance();
+        int commid = idserver->getID(const_cast<void*>(id),
+                                     detail->_ico_uws_fd.fd);
+        DebugOut() << "ControlWebsocket callback_receive Insert ID is "
+                   << commid << "\n";
+        container->mwif->registDestination(container->type,
+                                           detail->_ico_uws_fd.fd);
+        break;
+    }
+    case ICO_UWS_EVT_DEL_FD:
+    {
+        container->mwif->unregistDestination(container->type,
+                                             detail->_ico_uws_fd.fd);
         break;
     }
     default:
-    {
         break;
     }
-    }
-    return 0;
 }
 
 void *

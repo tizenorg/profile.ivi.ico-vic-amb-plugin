@@ -34,13 +34,13 @@ find_package(Boost REQUIRED)
 
 pkg_check_modules(glib REQUIRED glib-2.0 gobject-2.0)
 pkg_check_modules(gio REQUIRED gio-2.0)
-pkg_check_modules(json REQUIRED json-glib-1.0)
+pkg_check_modules(json REQUIRED json)
 pkg_check_modules(ambd REQUIRED automotive-message-broker)
 
 add_definitions(-std=c++0x)
 
-set(include_dirs ${libtool_INCLUDE_DIR} ${glib_INCLUDE_DIRS} ${gio_INCLUDE_DIRS} ${gio-unix_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${json_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/lib /usr/include/amb)
-set(link_libraries -lamb ${libtool_LIBRARY} ${glib_LIBRARIES} ${json_LIBRARIES} -L${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(include_dirs ${libtool_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${json_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/lib /usr/include/amb)
+set(link_libraries -lamb ${libtool_LIBRARY} ${json_LIBRARIES} -L${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 set(ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
 add_custom_target(dist COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -52,3 +52,4 @@ install (FILES ${ico-vic-amb-plugin_docs} DESTINATION ${DOC_INSTALL_DIR})
 
 add_subdirectory(src)
 add_subdirectory(tests)
+add_subdirectory(tool)

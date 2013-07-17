@@ -1,3 +1,10 @@
+* Wed Jul 17 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/2.0alpha-wayland/20130603.172856@298d6ff
+- 0.2.1 release.
+- Change to ico-uxf-utilities from libwebsocket
+- Change to json-c from json-glib
+- Add ico-set-vehicleinfo that is instead of CarSim.
+- Bug fix : Error when uninstalling.
+
 * Fri May 24 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/2.0alpha-wayland/20130426.191358@04b4211
 - Bug fix for TIVI-992: Collection of spelling error.(WARTER -> WATER) 
 

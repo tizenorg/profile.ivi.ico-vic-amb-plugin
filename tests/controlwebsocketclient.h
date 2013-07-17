@@ -25,8 +25,6 @@
 #include <map>
 #include <vector>
 
-#include <libwebsockets.h>
-
 #include "controlwebsocket.h"
 #include "eventmessage.h"
 #include "datamessage.h"
@@ -43,27 +41,28 @@ public:
     receive(char *keyeventtype, timeval recordtime, void *data, size_t len);
     void
     observation();
-    static int
-    callback_receive(libwebsocket_context *context, libwebsocket *wsi,
-                     libwebsocket_callback_reasons reason, void *user, void *in,
-                     size_t len);
+
+    static void
+    callback_receive(const struct ico_uws_context *context,
+                     const ico_uws_evt_e event, const void *id,
+                     const ico_uws_detail *detail, void *user_data);
+
     static void *
     run(void *arg);
 
     static pthread_mutex_t mutex_scenario;
     static pthread_cond_t cond_scenario;
     static std::string vehiclename_scenario;
+    static void *wsi[4];
 
-private:
-    libwebsocket_context *context;
-    libwebsocket* socket;
-    libwebsocket_protocols protocollist[2];
+protected:
     enum ControlWebsocket::ServerProtocol type;
+private:
+    ico_uws_context *context;
     EventMessage eventmsg;
     DataMessage datamsg;
     pthread_t threadid;
     pthread_mutex_t mutex;
-    char buf[LWS_SEND_BUFFER_PRE_PADDING + StandardMessage::BUFSIZE
-            + LWS_SEND_BUFFER_POST_PADDING];
+    char buf[StandardMessage::BUFSIZE];
 };
 #endif // #ifndef CONTROLWEBSOCKETCLIENT_H_

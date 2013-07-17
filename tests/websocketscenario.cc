@@ -24,15 +24,13 @@
 #include <string>
 #include <vector>
 
-#include <json-glib/json-glib.h>
-
 #include "debugout.h"
 
 #include "configamb.h"
 #include "scenarioengine.h"
 
 std::string AMBCONFPATH = "/etc/ambd/config";
-const int sleeptime = 100 * 1000;
+const int sleeptime = 75 * 1000;
 
 WebsocketAppScenarioEngine::WebsocketAppScenarioEngine()
 {
@@ -77,7 +75,8 @@ WebsocketAppScenarioEngine::start()
         DebugOut(10) << "WebsocketApp Next." << std::endl;
     }
     DebugOut(10) << "vehiclename_scenario = "
-                 << ControlWebsocketClientApp::vehiclename_scenario << std::endl;
+                 << ControlWebsocketClientApp::vehiclename_scenario 
+                 << std::endl;
     DebugOut(10) << "=========" << "WebsocketApp Set" << "========="
                  << std::endl;
 
@@ -107,7 +106,7 @@ WebsocketAppScenarioEngine::start()
     pthread_mutex_unlock(&ControlWebsocketClientApp::mutex_scenario);
     DebugOut(10) << "WebsocketApp Next." << std::endl;
     DebugOut(10) << "=========" << "WebsocketApp Set & Get" << "========="
-            << std::endl;
+                 << std::endl;
     for (auto itr = namelist.begin(); itr != namelist.end(); itr++) {
         for (auto itr2 = (*itr).second.begin(); itr2 != (*itr).second.end();
              itr2++) {
@@ -171,7 +170,6 @@ WebsocketAppScenarioEngine::initialize()
 int
 main()
 {
-    g_type_init();
     DebugOut::setDebugThreshhold(5);
     WebsocketAppScenarioEngine wsengine;
     if (!wsengine.initialize()) {

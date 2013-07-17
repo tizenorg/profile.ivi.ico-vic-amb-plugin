@@ -162,7 +162,7 @@ MWIF::~MWIF()
 }
 
 bool
-MWIF::initialize(VICCommunicator *com, Config *conf)
+MWIF::initialize(VICCommunicator *com, AMBConfig *conf)
 {
     communicator = com;
 
@@ -179,14 +179,14 @@ MWIF::initialize(VICCommunicator *com, Config *conf)
             vi.delimeterposition.push_back((*itr2).typesize);
         }
         vehicleinfoArray.push_back(vi);
-        DebugOut() << "MWIF initialize mwvehicleinfo name = " << vi.name 
+        DebugOut() << "MWIF initialize mwvehicleinfo name = " << vi.name
                    << std::endl;
     }
     PortInfo portinfo = conf->getPort();
-    DebugOut() << "MWIF initialize portinfo (" << portinfo.standard.dataPort 
-               << "," << portinfo.standard.controlPort << "," 
-               << portinfo.custom.dataPort << "," 
-               << portinfo.custom.controlPort << ")\n";
+    DebugOut() << "MWIF initialize portinfo (" << portinfo.standard.dataPort
+               << "," << portinfo.standard.controlPort << ","
+               << portinfo.custom.dataPort << "," << portinfo.custom.controlPort
+               << ")\n";
     createThread(&portinfo);
     return true;
 }
@@ -205,9 +205,9 @@ MWIF::send(MWVehicleInfo *vehicleinfo)
         vehicleinfo->statussize = curvehicleinfo->statussize;
         vehicleinfo->delimeterposition = curvehicleinfo->delimeterposition;
         DebugOut(10) << "MWIF send : mwnotifyinfomap.size() = "
-                     << mwnotifyinfomap.size() << "\n";
+                << mwnotifyinfomap.size() << "\n";
         for (auto itr = mwnotifyinfomap.begin(); itr != mwnotifyinfomap.end();
-             itr++) {
+                itr++) {
             if ((*itr).second.checkNotify(vehicleinfo->name,
                                           curvehicleinfo->status,
                                           vehicleinfo->status,
@@ -228,7 +228,7 @@ MWIF::recvRawdata(int commid, char *keyeventtype, timeval recordtime,
     DebugOut() << "MWIF recvRawdata(" << commid << "," << keyeventtype << ")\n";
     if (find(string(keyeventtype)) != NULL) {
         if (websocketservermap.find(commid) == websocketservermap.end()) {
-            registDestination(commid);
+            return;
         }
         websocketserver[static_cast<int>(websocketservermap[commid])]->receive(
                 commid, keyeventtype, recordtime, data, len);
@@ -240,7 +240,7 @@ MWIF::recvRawdata(int commid, char *keyeventtype, timeval recordtime,
         errorvi.name = string(keyeventtype);
         errorvi.recordtime = recordtime;
         errorvi.statussize = len - StandardMessage::KEYEVENTTYPESIZE
-                             - sizeof(timeval) - sizeof(int);
+                - sizeof(timeval) - sizeof(int);
         memset(errorvi.status, 0, STATUSSIZE);
         sendMessage(commid, UNKNOWN, &errorvi);
     }
@@ -284,34 +284,24 @@ MWIF::recvMessage(MessageType type, int commid, char *keyeventtype,
 }
 
 void
-MWIF::registDestination(int commid)
+MWIF::registDestination(ControlWebsocket::ServerProtocol type, int commid)
 {
-    if (websocketservermap.find(commid) == websocketservermap.end()) {
-        for (int i = 0; i < SERVERNUM; i++) {
-            if (websocketserver[i]->registSocket(commid)) {
-                DebugOut() << "MWIF registDestination insert(" << commid << ","
-                           << i << ")\n";
-                websocketservermap.insert(
-                        make_pair(
-                                commid,
-                                static_cast<ControlWebsocket::ServerProtocol>(i)));
-                break;
-            }
-        }
+    DebugOut() << "MWIF type = " << type << std::endl;
+    if (websocketserver[type]->registSocket(commid)) {
+        DebugOut() << "MWIF registDestination insert(" << commid << "," << type
+                   << ")\n";
+        websocketservermap.insert(make_pair(commid, type));
     }
 }
 
 void
-MWIF::unregistDestination(int commid)
+MWIF::unregistDestination(ControlWebsocket::ServerProtocol type, int commid)
 {
     if (websocketservermap.find(commid) != websocketservermap.end()) {
-        for (int i = 0; i < SERVERNUM; i++) {
-            if (websocketserver[i]->unregistSocket(commid)) {
-                DebugOut() << "MWIF unregistDestination erase(" << commid << ","
-                           << i << ")\n";
-                websocketservermap.erase(commid);
-                break;
-            }
+        if (websocketserver[type]->unregistSocket(commid)) {
+            DebugOut() << "MWIF unregistDestination erase(" << commid << ","
+                       << type << ")\n";
+            websocketservermap.erase(commid);
         }
     }
 }
@@ -323,11 +313,11 @@ MWIF::sendMessage(int commid, CommonStatus status, MWVehicleInfo *vehicleinfo)
     opt.common_status = status;
     memcpy(opt.status, vehicleinfo->status, STATUSSIZE);
     size_t len = StandardMessage::KEYEVENTTYPESIZE + sizeof(timeval)
-                 + sizeof(int) + vehicleinfo->statussize;
+            + sizeof(int) + vehicleinfo->statussize;
     DebugOut(10) << "MWIF sendMessage vehicleinfo->statussize = "
                  << vehicleinfo->statussize << ", len = " << len << std::endl;
     if (websocketservermap.find(commid) == websocketservermap.end()) {
-        registDestination(commid);
+        return;
     }
     DebugOut() << "MWIF sendMessage controlwebsocket->send(" << commid << ","
                << vehicleinfo->name << "),len = " << len << std::endl;
@@ -342,22 +332,23 @@ MWIF::createThread(PortInfo *portinfo)
     for (int i = 0; i < SERVERNUM; i++) {
         websocketserver[i] = new ControlWebsocket();
     }
-    ControlWebsocket::mwif = this;
     websocketserver[ControlWebsocket::DATA_STANDARD]->initialize(
-            portinfo->standard.dataPort, ControlWebsocket::DATA_STANDARD);
+            portinfo->standard.dataPort, ControlWebsocket::DATA_STANDARD, this);
     websocketserver[ControlWebsocket::CONTROL_STANDARD]->initialize(
-            portinfo->standard.controlPort, ControlWebsocket::CONTROL_STANDARD);
+            portinfo->standard.controlPort, ControlWebsocket::CONTROL_STANDARD,
+            this);
     websocketserver[ControlWebsocket::DATA_CUSTOM]->initialize(
-            portinfo->custom.dataPort, ControlWebsocket::DATA_CUSTOM);
+            portinfo->custom.dataPort, ControlWebsocket::DATA_CUSTOM, this);
     websocketserver[ControlWebsocket::CONTROL_CUSTOM]->initialize(
-            portinfo->custom.controlPort, ControlWebsocket::CONTROL_CUSTOM);
+            portinfo->custom.controlPort, ControlWebsocket::CONTROL_CUSTOM,
+            this);
 }
 
 MWVehicleInfo *
 MWIF::find(string name)
 {
     for (auto itr = vehicleinfoArray.begin(); itr != vehicleinfoArray.end();
-         itr++) {
+            itr++) {
         DebugOut(10) << "MWIF find" << (*itr).name << std::endl;
         if ((*itr).name == name) {
             return &(*itr);

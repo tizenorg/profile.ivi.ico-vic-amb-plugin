@@ -22,8 +22,6 @@
 #include <iostream>
 #include <list>
 
-#include <json-glib/json-glib.h>
-
 #include "debugout.h"
 #include "vehicleproperty.h"
 
@@ -32,7 +30,7 @@
 
 extern std::list<VehicleProperty::Property> VehicleProperty::mCapabilities;
 extern VehicleProperty vehiclePropertyConstruct;
-const int sleeptime = 25 * 1000;
+const int sleeptime = 50 * 1000;
 
 MWScenarioEngine::MWScenarioEngine()
 {
@@ -80,9 +78,8 @@ MWScenarioEngine::start()
                 const_cast<char*>(vehicleinfomapbeginitr->first.c_str()), time,
                 &eopt, 64 + sizeof(timeval) + sizeof(EventOpt));
         DebugOut(10) << "[S]: " << vehicleinfomapbeginitr->first << " , "
-                     << time.tv_sec << "." << time.tv_usec << " , " 
-                     << eopt.common << " , " << eopt.sense << " , " 
-                     << eopt.event_mask << std::endl;
+                     << time.tv_sec << "." << time.tv_usec << " , " << eopt.common
+                     << " , " << eopt.sense << " , " << eopt.event_mask << std::endl;
         ControlWebsocketClient::vehiclename_scenario =
                 vehicleinfomapbeginitr->first;
         waitcount = vehicleinfomapbeginitr->second.size();
@@ -98,7 +95,7 @@ MWScenarioEngine::start()
     // Get
     DebugOut(10) << "=========" << "MW Get" << "=========" << std::endl;
     for (auto itr = vehicleinfomap.begin(); itr != vehicleinfomap.end();
-            itr++) {
+         itr++) {
         usleep(sleeptime);
         memset(status, 0, sizeof(status));
         idx = 0;
@@ -118,8 +115,8 @@ MWScenarioEngine::start()
         client[server].send(const_cast<char*>(itr->first.c_str()), time, &eopt,
                             64 + sizeof(timeval) + sizeof(EventOpt));
         DebugOut(10) << "[S]: " << itr->first << " , " << time.tv_sec << "."
-                     << time.tv_usec << " , " << eopt.common << " , " 
-                     << eopt.sense << " , " << eopt.event_mask << std::endl;
+                     << time.tv_usec << " , " << eopt.common << " , " << eopt.sense
+                     << " , " << eopt.event_mask << std::endl;
     }
     // Wait Get
     pthread_mutex_lock(&ControlWebsocketClient::mutex_scenario);
@@ -144,8 +141,8 @@ MWScenarioEngine::start()
         client[server + 1].send(const_cast<char*>("Detarame"), time, &eopt,
                                 64 + sizeof(timeval) + sizeof(EventOpt));
         DebugOut(10) << "[S]: " << "Detarame" << " , " << time.tv_sec << "."
-                     << time.tv_usec << " , " << eopt.common << " , " 
-                     << eopt.sense << " , " << eopt.event_mask << std::endl;
+                     << time.tv_usec << " , " << eopt.common << " , " << eopt.sense
+                     << " , " << eopt.event_mask << std::endl;
 
         usleep(sleeptime);
         eopt.common = 50;
@@ -153,8 +150,8 @@ MWScenarioEngine::start()
         client[server + 1].send(const_cast<char*>("Detarame"), time, &eopt,
                                 64 + sizeof(timeval) + sizeof(EventOpt));
         DebugOut(10) << "[S]: " << "Detarame" << " , " << time.tv_sec << "."
-                     << time.tv_usec << " , " << eopt.common << " , " 
-                     << eopt.sense << " , " << eopt.event_mask << std::endl;
+                     << time.tv_usec << " , " << eopt.common << " , " << eopt.sense
+                     << " , " << eopt.event_mask << std::endl;
     }
     // Set(1st)
     DebugOut(10) << "=========" << "MW Set" << "=========" << std::endl;
@@ -278,7 +275,6 @@ MWScenarioEngine::initialize()
 int
 main()
 {
-    g_type_init();
     DebugOut::setDebugThreshhold(5);
     MWScenarioEngine mwengine;
     if (!mwengine.initialize()) {

@@ -19,18 +19,20 @@
 #ifndef CONTROLWEBSOCKET_H_
 #define CONTROLWEBSOCKET_H_
 
+#include <poll.h>
 #include <pthread.h>
 #include <sys/time.h>
 
 #include <map>
 #include <vector>
 
-#include <libwebsockets.h>
+#include "ico-util/ico_uws.h"
 
 #include "eventmessage.h"
 #include "datamessage.h"
 
 class MWIF;
+struct user_datacontainer;
 
 /**
  * Class that manages the Websocket.
@@ -41,7 +43,12 @@ public:
      * The protocol used to Websocket communicate.
      */
     enum ServerProtocol {
-        DATA_STANDARD, CONTROL_STANDARD, DATA_CUSTOM, CONTROL_CUSTOM
+        DATA_STANDARD = 0, CONTROL_STANDARD, DATA_CUSTOM, CONTROL_CUSTOM
+    };
+
+    struct user_datacontainer {
+        enum ControlWebsocket::ServerProtocol type;
+        MWIF *mwif;
     };
     /**
      * Constructor.
@@ -59,7 +66,7 @@ public:
      * @return Success : true Failure : false
      */
     bool
-    initialize(int port, enum ServerProtocol stype);
+    initialize(int port, enum ServerProtocol stype, MWIF *mwif_);
     /**
      * This function sends a message to the MW.
      * 
@@ -115,10 +122,10 @@ public:
      * @param in Pointer used for some callback reasons
      * @param len Length set for some callback reasons.
      */
-    static int
-    callback_receive(libwebsocket_context *context, libwebsocket *wsi,
-                     libwebsocket_callback_reasons reason, void *user, void *in,
-                     size_t len);
+    static void
+    callback_receive(const struct ico_uws_context *context,
+                     const ico_uws_evt_e event, const void *id,
+                     const ico_uws_detail *detail, void *user_data);
     /**
      * Function for multi-threaded execution.
      */
@@ -128,17 +135,20 @@ public:
     /**
      * Instance of MWIF.
      */
-    static MWIF *mwif;
-private:
-    libwebsocket_context *context;
-    libwebsocket_protocols protocollist[2];
+protected:
     enum ServerProtocol type;
-    std::map<int, libwebsocket*> socketmap;
+private:
+    ico_uws_context *context;
+    std::map<int, void*> socketmap;
     EventMessage eventmsg;
     DataMessage datamsg;
     pthread_t threadid;
     pthread_mutex_t mutex;
-    char buf[LWS_SEND_BUFFER_PRE_PADDING + StandardMessage::BUFSIZE
-            + LWS_SEND_BUFFER_POST_PADDING];
+    char buf[StandardMessage::BUFSIZE];
+    char iface[128];
+    std::vector<pollfd> pollfds;
+    MWIF *mwif;
+    user_datacontainer container;
 };
+
 #endif // #ifndef CONTROLWEBSOCKET_H_

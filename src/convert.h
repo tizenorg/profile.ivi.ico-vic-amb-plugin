@@ -22,7 +22,7 @@
 
 #include "abstractpropertytype.h"
 
-#include "config.h"
+#include "ambconfig.h"
 
 struct AMBVehicleInfo;
 struct MWVehicleInfo;
@@ -47,7 +47,7 @@ public:
      * @return Success : true Failure : false
      */
     bool
-    initialize(Config *conf);
+    initialize(AMBConfig *conf);
     /**
      * This function converts the vehicle infomation of MW into the vehicle information of AMB.
      *
@@ -70,11 +70,10 @@ public:
                    MWVehicleInfo *mwvehicleinfo);
 private:
     std::string
-    toString(std::string ambname, char *data, int size,
-             VehicleInfoDefine::Status::DataType type);
+    toString(std::string ambname, char *data, int size, DataType type);
     int
     toBinary(std::string ambname, AbstractPropertyType *value, int size,
-             VehicleInfoDefine::Status::DataType type, char *buf);
+             DataType type, char *buf);
     double
     toDouble(timeval time);
     timeval
@@ -83,12 +82,12 @@ private:
     specialConvertAMBtoMW(std::string ambname, AbstractPropertyType *value);
     std::string
     specialConvertMWtoAMB(std::string ambname, char *data, int size,
-                          VehicleInfoDefine::Status::DataType type);
+                          DataType type);
     struct ConvertTable {
         std::string mwname;
         struct AmbVehicleInfoData {
             std::string ambname;
-            VehicleInfoDefine::Status::DataType type;
+            DataType type;
             int typesize;
         };
         std::vector<AmbVehicleInfoData> ambdataarray;

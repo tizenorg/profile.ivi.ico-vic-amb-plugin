@@ -77,7 +77,8 @@ Config::parseJson(string config)
     if (!json_parser_load_from_data(parser, config.c_str(), config.length(),
                                     &error)) {
         cerr << "Failed to load config[" << error->message << "]." << endl;
-        DebugOut() << "Failed to load config[" << error->message << "]." << endl;
+        DebugOut() << "Failed to load config[" << error->message << "]."
+                << endl;
         return ret;
     }
 
@@ -98,10 +99,10 @@ Config::parseJson(string config)
     json_reader_read_member(reader, "Config");
     const GError *configReadError = json_reader_get_error(reader);
     if (configReadError != nullptr) {
-        cerr << "Error getting sources member[" 
-             << configReadError->message << "]." << endl;
-        DebugOut() << "Error getting sources member[" 
-                   << configReadError->message << "]." << endl;
+        cerr << "Error getting sources member[" << configReadError->message
+                << "]." << endl;
+        DebugOut() << "Error getting sources member["
+                << configReadError->message << "]." << endl;
         return ret;
     }
     g_assert(json_reader_is_array(reader));

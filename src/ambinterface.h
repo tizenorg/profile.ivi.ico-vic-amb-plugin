@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "abstractsource.h"
-#include "config.h"
+#include "ambconfig.h"
 
 /**
  * Vehicle information of AMB.
@@ -37,7 +37,7 @@ struct AMBVehicleInfo {
     bool isCustom;
 };
 
-class Config;
+class AMBConfig;
 class VICCommunicator;
 
 /**
@@ -124,7 +124,7 @@ public:
      * @return Success : true Failure : false
      */
     bool
-    initialize(VICCommunicator *comm, Config *conf);
+    initialize(VICCommunicator *comm, AMBConfig *conf);
     /**
      * AMBIF class is required to get the vehicle information to AMB-Core.
      *
@@ -198,8 +198,7 @@ public:
     }
 private:
     bool
-    registVehicleInfo(std::string propertyName,
-                      VehicleInfoDefine::Status::DataType type,
+    registVehicleInfo(std::string propertyName, DataType type,
                       std::string value);
     AMBVehicleInfo *
     find(std::string propertyName);
