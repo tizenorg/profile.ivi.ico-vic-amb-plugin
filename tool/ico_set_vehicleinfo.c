@@ -49,7 +49,7 @@ static const struct {
     { "Speed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0,0} },
     { "Velocity", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0,0} },
     { "Location", "LOCATION", {TYPE_DOUBLE, TYPE_DOUBLE, TYPE_DOUBLE, TYPE_NULL} },
-    { "Direction", "DIRECTION", {TYPE_DOUBLE, TYPE_NULL, 0,0} },
+    { "Direction", "DIRECTION", {TYPE_INT32, TYPE_NULL, 0,0} },
     { "EngineSpeed", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0} },
     { "Engine", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0} },
     { "Shift", "SHIFT", {TYPE_SHIFT, TYPE_BYTE, TYPE_NULL, 0} },
@@ -115,12 +115,17 @@ init_comm(const int port, const char *spadr)
                 uri_name, port);
         exit(2);
     }
-    ico_uws_set_event_cb(context, uws_callback, NULL);
+    if (ico_uws_set_event_cb(context, uws_callback, NULL) != 
+        ICO_UWS_ERR_NONE) {
+        fprintf(stderr, "Can not set callback.\n");
+        exit(2);
+    }
 
     /* wait for connection          */
     for (rep = 0; rep < (2*1000); rep += 50)    {
         if (connected)  break;
         ico_uws_service(context);
+        usleep(50 * 1000);
     }
 }
 
@@ -334,6 +339,11 @@ main(int argc, char *argv[])
     }
 
     init_comm(port, spadr);
+
+    if (!connected) {
+        fprintf(stderr, "Can't connect server.\n");
+        exit(-1);
+    }
 
     if (j <= 0) {
         while (fgets(buf, sizeof(buf), stdin))  {
