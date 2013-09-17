@@ -31,9 +31,9 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/%{_sysconfdir}/ambd
-mkdir -p %{buildroot}/usr/local/bin
+mkdir -p %{buildroot}/usr/bin
 cp src/AMBformat.conf %{buildroot}/%{_sysconfdir}/ambd/
-cp tool/ico_set_vehicleinfo %{buildroot}/usr/local/bin/ico_set_vehicleinfo
+cp tool/ico_set_vehicleinfo %{buildroot}/usr/bin/ico_set_vehicleinfo
 
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
@@ -43,4 +43,4 @@ cp tool/ico_set_vehicleinfo %{buildroot}/usr/local/bin/ico_set_vehicleinfo
 %{_libdir}/automotive-message-broker/*.so
 %{_sysconfdir}/ambd/AMBformat.conf
 /usr/share/doc/automotive-message-broker/%{name}/README
-/usr/local/bin/ico_set_vehicleinfo
+/usr/bin/ico_set_vehicleinfo

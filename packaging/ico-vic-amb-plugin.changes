@@ -1,3 +1,6 @@
+* Tue Sep 17 2013 Kevron Rees <kevron.m.rees@intel.com>
+- Install ico_set_vehicleinfo to /usr/bin instead of /usr/local/bin
+
 * Fri Aug 30 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/2.0alpha-wayland/20130603.172856@28877d7
 - release 0.9.01
 -- Bug fix for TIVI-991 : Modify ico_set_vehicleinfo. 
