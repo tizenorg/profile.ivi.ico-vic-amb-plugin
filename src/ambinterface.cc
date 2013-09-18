@@ -305,64 +305,64 @@ AMBIF::registVehicleInfo(std::string propertyName, DataType type, string value)
     switch (type) {
     case INT:
     {
-        factory = [value]() {
-            return new BasicPropertyType<int>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<int>(propertyName, value);
         };
         break;
     }
     case DOUBLE:
     {
-        factory = [value]() {
-            return new BasicPropertyType<double>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<double>(propertyName, value);
         };
         break;
     }
     case CHAR:
     {
-        factory = [value]() {
-            return new BasicPropertyType<char>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<char>(propertyName, value);
         };
         break;
     }
     case INT16:
     {
-        factory = [value]() {
-            return new BasicPropertyType<int16_t>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<int16_t>(propertyName, value);
         };
         break;
     }
     case UINT16:
     {
-        factory = [value]() {
-            return new BasicPropertyType<uint16_t>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<uint16_t>(propertyName, value);
         };
         break;
     }
     case UINT32:
     {
-        factory = [value]() {
-            return new BasicPropertyType<uint32_t>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<uint32_t>(propertyName, value);
         };
         break;
     }
     case INT64:
     {
-        factory = [value]() {
-            return new BasicPropertyType<int64_t>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<int64_t>(propertyName, value);
         };
         break;
     }
     case UINT64:
     {
-        factory = [value]() {
-            return new BasicPropertyType<uint64_t>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<uint64_t>(propertyName, value);
         };
         break;
     }
     case BOOL:
     {
-        factory = [value]() {
-            return new BasicPropertyType<bool>(value);
+        factory = [value, propertyName]() {
+            return new BasicPropertyType<bool>(propertyName, value);
         };
         break;
     }
