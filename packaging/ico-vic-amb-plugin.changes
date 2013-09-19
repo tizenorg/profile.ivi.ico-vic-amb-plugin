@@ -1,3 +1,7 @@
+* Thu Sep 19 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/tizen/20130910.205130@cf82076
+- 0.9.02 release.
+-- Support for ico-uxf-utilities-0.2.04.
+
 * Tue Sep 17 2013 Kevron Rees <kevron.m.rees@intel.com>
 - Install ico_set_vehicleinfo to /usr/bin instead of /usr/local/bin
 

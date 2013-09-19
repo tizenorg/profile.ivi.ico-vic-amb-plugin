@@ -64,6 +64,8 @@ static const struct {
     { "lightStatus", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL} },
     { "light", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL} },
     { "WATER_TEMP", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0} },
+    { "EXTERIORBRIGHTNESS", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0} },
+    { "EXTERIOR", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0} },
     { "\0", "\0", {TYPE_NULL, 0,0,0} } };
 
 struct KeyDataMsg_t

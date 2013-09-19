@@ -1,6 +1,6 @@
 Name:       ico-vic-amb-plugin
 Summary:    Automotive Message Broker is a vehicle network abstraction system.
-Version:    0.9.0
+Version:    0.9.2
 Release:    1.1
 Group:      System Environment/Daemons
 License:    LGPL v2.1
