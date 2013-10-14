@@ -141,7 +141,7 @@ AMBIF::supportedOperations()
     return Get | Set;
 }
 
-string
+const string
 AMBIF::uuid()
 {
     return "f68f8b9a-fafb-4284-8ced-b45b5d720185";

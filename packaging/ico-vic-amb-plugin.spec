@@ -13,8 +13,9 @@ Requires:  ico-uxf-utilities
 BuildRequires:  cmake
 BuildRequires:  boost-devel
 BuildRequires:  libjson-devel
-BuildRequires:  automotive-message-broker-devel >= 0.6.9
+BuildRequires:  automotive-message-broker-devel >= 0.10.0
 BuildRequires:  ico-uxf-utilities-devel
+BuildRequires:  ico-uxf-utilities
 
 %description 
 Collection of plugins for automotive-message-broker

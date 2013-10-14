@@ -96,7 +96,7 @@ public:
      *
      * @return UUID
      */
-    string
+    const string
     uuid();
     /**
      * AMBIF class is received the vehicle information that other plugin updated.

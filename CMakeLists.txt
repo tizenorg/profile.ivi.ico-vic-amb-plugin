@@ -39,8 +39,8 @@ pkg_check_modules(ambd REQUIRED automotive-message-broker)
 
 add_definitions(-std=c++0x)
 
-set(include_dirs ${libtool_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${json_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/lib /usr/include/amb)
-set(link_libraries -lamb ${libtool_LIBRARY} ${json_LIBRARIES} -L${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(include_dirs ${libtool_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${json_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/lib ${ambd_INCLUDE_DIRS})
+set(link_libraries ${ambd_LIBRARIES} ${libtool_LIBRARY} ${json_LIBRARIES} -L${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 set(ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
 add_custom_target(dist COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
