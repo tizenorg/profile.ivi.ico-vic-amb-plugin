@@ -48,6 +48,7 @@ public:
 
     struct user_datacontainer {
         enum ControlWebsocket::ServerProtocol type;
+        ControlWebsocket *ctrlws;
         MWIF *mwif;
     };
     /**
@@ -91,6 +92,9 @@ public:
     bool
     receive(int commid, char *keyeventtype, timeval recordtime, void *data,
             size_t len);
+
+    bool
+    receive(int commid, char *data, size_t len);
     /**
      * This function monitors the file descriptor for Websocket Server.
      */

@@ -1,3 +1,8 @@
+* Fri Nov 29 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/tizen_ivi_stable/20131116.012220@47cc4e3
+- 0.9.04 release
+-- BugFix:TIVI-1991
+-- Modify:test suite.
+
 * Thu Sep 19 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/tizen/20130910.205130@cf82076
 - 0.9.02 release.
 -- Support for ico-uxf-utilities-0.2.04.

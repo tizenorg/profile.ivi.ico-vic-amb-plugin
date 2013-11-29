@@ -1,7 +1,7 @@
 Name:       ico-vic-amb-plugin
 Summary:    Automotive Message Broker is a vehicle network abstraction system.
-Version:    0.9.2
-Release:    1.1
+Version:    0.9.4
+Release:    2.1
 Group:      System Environment/Daemons
 License:    LGPL v2.1
 URL:        ""
@@ -14,8 +14,13 @@ BuildRequires:  cmake
 BuildRequires:  boost-devel
 BuildRequires:  libjson-devel
 BuildRequires:  automotive-message-broker-devel >= 0.10.0
-BuildRequires:  ico-uxf-utilities-devel
-BuildRequires:  ico-uxf-utilities
+BuildRequires:  ico-uxf-utilities-devel >= 0.9.04
+BuildRequires:  ico-uxf-utilities >= 0.9.04
+BuildRequires:  pkgconfig(ecore)
+BuildRequires:  pkgconfig(elementary)
+BuildRequires:  pkgconfig(edbus)
+BuildRequires:  pkgconfig(dbus-1)
+BuildRequires:  pkgconfig(appcore-efl)
 
 %description 
 Collection of plugins for automotive-message-broker

@@ -43,6 +43,10 @@ struct MWVehicleInfo {
     char status[STATUSSIZE];
     int statussize;
     vector<int> delimeterposition;
+
+    bool operator==(const MWVehicleInfo& b) {
+        return (this->name == b.name);
+    }
 };
 
 /**
@@ -195,7 +199,7 @@ private:
     MWVehicleInfo *
     find(std::string name);
     void
-    procSetMessage(int commid, char *keyeventtype, timeval recordtime,
+    procSetMessage(int commid, MWVehicleInfo *vi, char *keyeventtype, timeval recordtime,
                    DataOpt *data, size_t len);
     void
     procGetMessage(int commid, char *keyeventtype, timeval recordtime,
@@ -210,5 +214,6 @@ private:
     VICCommunicator *communicator;
     std::map<int, ControlWebsocket::ServerProtocol> websocketservermap;
     std::map<int, MWNotifyInfo> mwnotifyinfomap;
+    pthread_mutex_t mutex_socketmap;
 };
 #endif // MWINTERFACE_H

@@ -77,7 +77,7 @@ Config::parseJson(string config)
     if (!json_parser_load_from_data(parser, config.c_str(), config.length(),
                                     &error)) {
         cerr << "Failed to load config[" << error->message << "]." << endl;
-        DebugOut() << "Failed to load config[" << error->message << "]."
+        DebugOut(10) << "Failed to load config[" << error->message << "]."
                 << endl;
         return ret;
     }
@@ -85,14 +85,14 @@ Config::parseJson(string config)
     JsonNode *node = json_parser_get_root(parser);
     if (node == nullptr) {
         cerr << "Unable to get JSON root object." << endl;
-        DebugOut() << "Unable to get JSON root object." << endl;
+        DebugOut(10) << "Unable to get JSON root object." << endl;
         return ret;
     }
 
     JsonReader *reader = json_reader_new(node);
     if (reader == nullptr) {
         cerr << "Unable to create JSON reader." << endl;
-        DebugOut() << "Unable to create JSON reader." << endl;
+        DebugOut(10) << "Unable to create JSON reader." << endl;
         return ret;
     }
 
@@ -101,7 +101,7 @@ Config::parseJson(string config)
     if (configReadError != nullptr) {
         cerr << "Error getting sources member[" << configReadError->message
                 << "]." << endl;
-        DebugOut() << "Error getting sources member["
+        DebugOut(10) << "Error getting sources member["
                 << configReadError->message << "]." << endl;
         return ret;
     }

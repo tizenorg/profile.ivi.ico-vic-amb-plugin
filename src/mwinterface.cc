@@ -18,6 +18,7 @@
  */
 #include <string.h>
 
+#include <algorithm>
 #include <iostream>
 
 #include "debugout.h"
@@ -109,7 +110,7 @@ bool
 MWNotifyInfo::checkNotify(std::string name, char *olddata, char *newdata,
                           timeval newtime)
 {
-    DebugOut() << "MWNotiryInfo checkNotify(" << name << ")" << std::endl;
+    DebugOut(10) << "MWNotiryInfo checkNotify(" << name << ")" << std::endl;
     pthread_mutex_lock(&mutex);
     if (notifyMap.find(name) == notifyMap.end()) {
         pthread_mutex_unlock(&mutex);
@@ -126,7 +127,7 @@ MWNotifyInfo::checkNotify(std::string name, char *olddata, char *newdata,
     for (auto itr = notifyMap[name].begin(); itr != notifyMap[name].end();
          itr++) {
         for (int i = 0; i < STATUSSIZE; i++) {
-            DebugOut() << "checkDiff[" << i << "] = " << checkDiff[i]
+            DebugOut(10) << "checkDiff[" << i << "] = " << checkDiff[i]
                        << ", (*itr).mask[i] = " << (*itr).mask[i]
                        << " , checkDiff[i] & (*itr).mask[i] = "
                        << (int)(checkDiff[i] & (*itr).mask[i]) << std::endl;
@@ -147,6 +148,7 @@ MWIF::MWIF()
     for (int i = 0; i < SERVERNUM; i++) {
         websocketserver[i] = NULL;
     }
+    mutex_socketmap = PTHREAD_MUTEX_INITIALIZER;
 }
 
 MWIF::~MWIF()
@@ -159,6 +161,7 @@ MWIF::~MWIF()
     }
     websocketservermap.clear();
     mwnotifyinfomap.clear();
+    pthread_mutex_destroy(&mutex_socketmap);
 }
 
 bool
@@ -168,7 +171,7 @@ MWIF::initialize(VICCommunicator *com, AMBConfig *conf)
 
     vector<VehicleInfoDefine> table;
     table = conf->getVehicleInfoConfig();
-    for (auto itr = table.begin(); itr != table.end(); itr++) {
+    for (auto itr = table.begin(), itr_end = table.end(); itr != itr_end; itr++) {
         MWVehicleInfo vi;
         vi.name = string((*itr).KeyEventType);
         memset(&vi.status, 0, STATUSSIZE);
@@ -179,14 +182,15 @@ MWIF::initialize(VICCommunicator *com, AMBConfig *conf)
             vi.delimeterposition.push_back((*itr2).typesize);
         }
         vehicleinfoArray.push_back(vi);
-        DebugOut() << "MWIF initialize mwvehicleinfo name = " << vi.name
+        DebugOut(10) << "MWIF initialize mwvehicleinfo name = " << vi.name
                    << std::endl;
     }
+    DebugOut(1) << "INFO CHG_VIC_INF The number of VIC vehicle info is " << vehicleinfoArray.size() << ".\n";
     PortInfo portinfo = conf->getPort();
-    DebugOut() << "MWIF initialize portinfo (" << portinfo.standard.dataPort
-               << "," << portinfo.standard.controlPort << ","
-               << portinfo.custom.dataPort << "," << portinfo.custom.controlPort
-               << ")\n";
+    DebugOut(1) << "INFO CHG_VIC_INF Portinfo list is (" << portinfo.standard.dataPort
+                << "," << portinfo.standard.controlPort << ","
+                << portinfo.custom.dataPort << "," << portinfo.custom.controlPort
+                << ")\n";
     createThread(&portinfo);
     return true;
 }
@@ -225,7 +229,7 @@ void
 MWIF::recvRawdata(int commid, char *keyeventtype, timeval recordtime,
                   void *data, size_t len)
 {
-    DebugOut() << "MWIF recvRawdata(" << commid << "," << keyeventtype << ")\n";
+    DebugOut(10) << "MWIF recvRawdata(" << commid << "," << keyeventtype << ")\n";
     if (find(string(keyeventtype)) != NULL) {
         if (websocketservermap.find(commid) == websocketservermap.end()) {
             return;
@@ -235,7 +239,7 @@ MWIF::recvRawdata(int commid, char *keyeventtype, timeval recordtime,
     }
     // Error Message
     else {
-        DebugOut() << "MWIF recvRawdata " << "Error Data." << std::endl;
+        DebugOut(10) << "MWIF recvRawdata " << "Error Data." << std::endl;
         MWVehicleInfo errorvi;
         errorvi.name = string(keyeventtype);
         errorvi.recordtime = recordtime;
@@ -250,19 +254,32 @@ void
 MWIF::recvMessage(MessageType type, int commid, char *keyeventtype,
                   timeval recordtime, void *data, size_t len)
 {
+    MWVehicleInfo *vi;
+    if ((vi = find(string(keyeventtype))) == NULL) {
+        DebugOut(10) << "MWIF recvMessage " << "Error Data." << std::endl;
+        MWVehicleInfo errorvi;
+        errorvi.name = string(keyeventtype);
+        errorvi.recordtime = recordtime;
+        errorvi.statussize = len - StandardMessage::KEYEVENTTYPESIZE
+                - sizeof(timeval) - sizeof(int);
+        memset(errorvi.status, 0, STATUSSIZE);
+        sendMessage(commid, UNKNOWN, &errorvi);
+        return;
+    }
+
     DebugOut(10) << "MWIF recvMessage(" << commid << ")\n";
     switch (type) {
     case MessageType::SET:
     {
-        DebugOut() << "MWIF recvMessage(" << commid << ",SET) " << keyeventtype
+        DebugOut(8) << "MWIF recvMessage(" << commid << ",SET) " << keyeventtype
                    << "\n";
         DataOpt *opt = reinterpret_cast<DataOpt*>(data);
-        procSetMessage(commid, keyeventtype, recordtime, opt, len);
+        procSetMessage(commid, vi, keyeventtype, recordtime, opt, len);
         break;
     }
     case MessageType::GET:
     {
-        DebugOut() << "MWIF recvMessage(" << commid << ",GET) " << keyeventtype
+        DebugOut(8) << "MWIF recvMessage(" << commid << ",GET) " << keyeventtype
                    << "\n";
         EventOpt *opt = reinterpret_cast<EventOpt*>(data);
         procGetMessage(commid, keyeventtype, recordtime, opt, len);
@@ -270,7 +287,7 @@ MWIF::recvMessage(MessageType type, int commid, char *keyeventtype,
     }
     case MessageType::CALLBACK:
     {
-        DebugOut() << "MWIF recvMessage(" << commid << ",CALLBACK) "
+        DebugOut(8) << "MWIF recvMessage(" << commid << ",CALLBACK) "
                    << keyeventtype << "\n";
         EventOpt *opt = reinterpret_cast<EventOpt*>(data);
         procCallbackMessage(commid, keyeventtype, recordtime, opt, len);
@@ -286,24 +303,28 @@ MWIF::recvMessage(MessageType type, int commid, char *keyeventtype,
 void
 MWIF::registDestination(ControlWebsocket::ServerProtocol type, int commid)
 {
-    DebugOut() << "MWIF type = " << type << std::endl;
+    DebugOut(10) << "MWIF type = " << type << std::endl;
+    pthread_mutex_lock(&mutex_socketmap);
     if (websocketserver[type]->registSocket(commid)) {
-        DebugOut() << "MWIF registDestination insert(" << commid << "," << type
+        DebugOut(10) << "MWIF registDestination insert(" << commid << "," << type
                    << ")\n";
         websocketservermap.insert(make_pair(commid, type));
     }
+    pthread_mutex_unlock(&mutex_socketmap);
 }
 
 void
 MWIF::unregistDestination(ControlWebsocket::ServerProtocol type, int commid)
 {
+    pthread_mutex_lock(&mutex_socketmap);
     if (websocketservermap.find(commid) != websocketservermap.end()) {
         if (websocketserver[type]->unregistSocket(commid)) {
-            DebugOut() << "MWIF unregistDestination erase(" << commid << ","
+            DebugOut(10) << "MWIF unregistDestination erase(" << commid << ","
                        << type << ")\n";
             websocketservermap.erase(commid);
         }
     }
+    pthread_mutex_unlock(&mutex_socketmap);
 }
 
 void
@@ -319,7 +340,7 @@ MWIF::sendMessage(int commid, CommonStatus status, MWVehicleInfo *vehicleinfo)
     if (websocketservermap.find(commid) == websocketservermap.end()) {
         return;
     }
-    DebugOut() << "MWIF sendMessage controlwebsocket->send(" << commid << ","
+    DebugOut(10) << "MWIF sendMessage controlwebsocket->send(" << commid << ","
                << vehicleinfo->name << "),len = " << len << std::endl;
     websocketserver[websocketservermap[commid]]->send(
             commid, const_cast<char*>(vehicleinfo->name.c_str()),
@@ -347,32 +368,33 @@ MWIF::createThread(PortInfo *portinfo)
 MWVehicleInfo *
 MWIF::find(string name)
 {
-    for (auto itr = vehicleinfoArray.begin(); itr != vehicleinfoArray.end();
-            itr++) {
-        DebugOut(10) << "MWIF find" << (*itr).name << std::endl;
-        if ((*itr).name == name) {
-            return &(*itr);
-        }
+    MWVehicleInfo vi;
+    vi.name = name;
+    auto itr = std::find(vehicleinfoArray.begin(), vehicleinfoArray.end(), vi);
+    if (itr == vehicleinfoArray.end()) {
+        DebugOut(10) << "MWIF find can't find property = " << name << std::endl;
+        return NULL;
     }
-    DebugOut() << "MWIF find can't find property = " << name << std::endl;
-    return NULL;
+    else {
+        return &(*itr);
+    }
 }
 
 void
-MWIF::procSetMessage(int commid, char *keyeventtype, timeval recordtime,
+MWIF::procSetMessage(int commid, MWVehicleInfo *vi, char *keyeventtype, timeval recordtime,
                      DataOpt *data, size_t len)
 {
-    MWVehicleInfo *vehicleinfo = find(string(keyeventtype));
     MWVehicleInfo updatevehicleinfo;
-    updatevehicleinfo.name = vehicleinfo->name;
+    updatevehicleinfo.name = vi->name;
     updatevehicleinfo.recordtime = recordtime;
-    updatevehicleinfo.statussize = vehicleinfo->statussize;
-    memcpy(updatevehicleinfo.status, data->status, STATUSSIZE);
+    updatevehicleinfo.statussize = vi->statussize;
+
+    memcpy(updatevehicleinfo.status, data->status, getStatussize(len));
     // Update AMB Data
     communicator->setAMBVehicleInfo(&updatevehicleinfo);
     // Update MW Data
-    vehicleinfo->recordtime = recordtime;
-    memcpy(vehicleinfo->status, updatevehicleinfo.status, STATUSSIZE);
+    vi->recordtime = recordtime;
+    memcpy(vi->status, updatevehicleinfo.status, getStatussize(len));
 }
 
 void

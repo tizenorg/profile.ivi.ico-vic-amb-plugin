@@ -34,7 +34,7 @@
 #define TYPE_UINT32 6
 #define TYPE_DOUBLE 7
 #define TYPE_STRING 8
-#define TYPE_SHIFT  12
+#define TYPE_SHIFT  15
 
 #define LWS_DEFAULTIP       "127.0.0.1" /* connection default ip(localhost) */
 #define LWS_DEFAULTPORT     25010       /* connection default port          */
@@ -43,30 +43,32 @@
 static const struct {
     char        *prop;
     char        *eventtype;
-    unsigned char   datatype[4];
+    unsigned char   datatype[5];
 }               vehicleinfo_key[] = {
-    { "VehicleSpeed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0,0} },
-    { "Speed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0,0} },
-    { "Velocity", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0,0} },
-    { "Location", "LOCATION", {TYPE_DOUBLE, TYPE_DOUBLE, TYPE_DOUBLE, TYPE_NULL} },
-    { "Direction", "DIRECTION", {TYPE_INT32, TYPE_NULL, 0,0} },
-    { "EngineSpeed", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "Engine", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "Shift", "SHIFT", {TYPE_SHIFT, TYPE_BYTE, TYPE_NULL, 0} },
-    { "ShiftPosition", "SHIFT", {TYPE_SHIFT, TYPE_BYTE, TYPE_NULL, 0} },
-    { "Break_Signal", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0,0} },
-    { "BreakSignal", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0,0} },
-    { "Break", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0,0} },
-    { "Blinker", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "Winker", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "TurnSignal", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "Turn", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "lightStatus", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL} },
-    { "light", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL} },
-    { "WATER_TEMP", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0} },
-    { "EXTERIORBRIGHTNESS", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0} },
-    { "EXTERIOR", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0} },
-    { "\0", "\0", {TYPE_NULL, 0,0,0} } };
+    { "VehicleSpeed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Speed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Velocity", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Location", "LOCATION", {TYPE_DOUBLE, TYPE_DOUBLE, TYPE_DOUBLE, TYPE_NULL, 0} },
+    { "Direction", "DIRECTION", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "EngineSpeed", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Engine", "ENGINE_SPEED", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Shift", "SHIFT", {TYPE_SHIFT, TYPE_INT32, TYPE_INT32, TYPE_NULL, TYPE_NULL} },
+    { "ShiftPosition", "SHIFT", {TYPE_SHIFT, TYPE_INT32, TYPE_INT32, TYPE_NULL, TYPE_NULL} },
+    { "Break_Signal", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0, 0, 0} },
+    { "BreakSignal", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0, 0, 0} },
+    { "Break", "BRAKE_SIGNAL", {TYPE_BOOL, TYPE_NULL, 0, 0, 0} },
+    { "Blinker", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Winker", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "TurnSignal", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "Turn", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "lightStatus", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, 0} },
+    { "light", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, 0} },
+    { "WATER_TEMP", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "EXTERIORBRIGHTNESS", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
+    { "EXTERIOR", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
+    { "STEERING", "STEERING", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "steering", "STEERING", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "\0", "\0", {TYPE_NULL, 0, 0, 0, 0} } };
 
 struct KeyDataMsg_t
 {
@@ -224,30 +226,12 @@ set_vehicleinfo(const char *cmd)
             switch (vehicleinfo_key[key].datatype[idx] % 10) {
             case TYPE_BOOL:
             case TYPE_BYTE:
-                if (vehicleinfo_key[key].datatype[idx] == TYPE_SHIFT)   {
-                    if ((strcasecmp(&value[i], "sp") == 0) ||
-                        (strcasecmp(&value[i], "s0") == 0)) {
-                        strcpy(&value[i], "0");
-                    }
-                    else if (strcasecmp(&value[i], "sr") == 0)  {
+                if (vehicleinfo_key[key].datatype[idx] == TYPE_BOOL){
+                    if (strcasecmp(&value[i], "true") == 0) {
                         strcpy(&value[i], "1");
                     }
-                    else if (strcasecmp(&value[i], "sn") == 0)  {
-                        strcpy(&value[i], "2");
-                    }
-                    else if ((strcasecmp(&value[i], "sd") == 0) ||
-                             (strcasecmp(&value[i], "s4") == 0))    {
-                        strcpy(&value[i], "4");
-                    }
-                    else if ((strcasecmp(&value[i], "s1") == 0) ||
-                             (strcasecmp(&value[i], "sl") == 0))    {
-                        strcpy(&value[i], "5");
-                    }
-                    else if (strcasecmp(&value[i], "s2") == 0)  {
-                        strcpy(&value[i], "6");
-                    }
-                    else if (strcasecmp(&value[i], "s3") == 0)  {
-                        strcpy(&value[i], "7");
+                    else if (strcasecmp(&value[i], "false") == 0) {
+                        strcpy(&value[i], "0");
                     }
                 }
                 msg.msg.data.status[pt++] = strtoul(&value[i], (char **)0, 0);
@@ -263,7 +247,38 @@ set_vehicleinfo(const char *cmd)
             case TYPE_INT32:
             case TYPE_UINT32:
                 ip = (int *)&msg.msg.data.status[pt];
-                *ip = strtol(&value[i], (char **)0, 0);
+                if (vehicleinfo_key[key].datatype[idx] == TYPE_SHIFT)   {
+                    if ((strcasecmp(&value[i], "sp") == 0) ||
+                        (strcasecmp(&value[i], "s0") == 0)) {
+                        *ip = strtol("0", (char **)0, 0);
+                    }
+                    else if (strcasecmp(&value[i], "sr") == 0)  {
+                        *ip = strtol("1", (char **)0, 0);
+                    }
+                    else if (strcasecmp(&value[i], "sn") == 0)  {
+                        *ip = strtol("2", (char **)0, 0);
+                    }
+                    else if ((strcasecmp(&value[i], "sd") == 0) ||
+                             (strcasecmp(&value[i], "s4") == 0))    {
+                        *ip = strtol("4", (char **)0, 0);
+                    }
+                    else if ((strcasecmp(&value[i], "s1") == 0) ||
+                             (strcasecmp(&value[i], "sl") == 0))    {
+                        *ip = strtol("5", (char **)0, 0);
+                    }
+                    else if (strcasecmp(&value[i], "s2") == 0)  {
+                        *ip = strtol("6", (char **)0, 0);
+                    }
+                    else if (strcasecmp(&value[i], "s3") == 0)  {
+                        *ip = strtol("7", (char **)0, 0);
+                    }
+                    else {
+                        *ip = strtol(&value[i], (char **)0, 0);
+                    }
+                }
+                else {
+                    *ip = strtol(&value[i], (char **)0, 0);
+                }
                 pt += sizeof(int);
                 msgsize += sizeof(int);
                 break;

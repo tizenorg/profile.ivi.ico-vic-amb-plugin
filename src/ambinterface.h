@@ -25,7 +25,11 @@
 #include <string>
 #include <vector>
 
-#include "abstractsource.h"
+#include <abstractpropertytype.h>
+#include <abstractsource.h>
+#if LATER1024
+#include <propertyinfo.hpp>
+#endif
 #include "ambconfig.h"
 
 /**
@@ -34,7 +38,12 @@
 struct AMBVehicleInfo {
     std::string name;
     AbstractPropertyType *value;
+    Zone::Type zone;
     bool isCustom;
+
+    bool operator==(const AMBVehicleInfo &vi) {
+        return (this->name == vi.name);
+    }
 };
 
 class AMBConfig;
@@ -96,7 +105,11 @@ public:
      *
      * @return UUID
      */
+#if LATER1024
     const string
+#else
+    string
+#endif
     uuid();
     /**
      * AMBIF class is received the vehicle information that other plugin updated.
@@ -196,6 +209,10 @@ public:
     supportedChanged(PropertyList)
     {
     }
+
+#if LATER1024
+    PropertyInfo getPropertyInfo(VehicleProperty::Property property);
+#endif
 private:
     bool
     registVehicleInfo(std::string propertyName, DataType type,
@@ -205,6 +222,9 @@ private:
 
     PropertyList propertylist;
     vector<AMBVehicleInfo> vehicleinfoArray;
+#if LATER1024
+    std::map<VehicleProperty::Property, PropertyInfo> propertyInfoMap;
+#endif
     VICCommunicator *communicator;
     pthread_mutex_t mutex;
 };

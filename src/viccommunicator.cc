@@ -47,16 +47,16 @@ void
 VICCommunicator::setAMBVehicleInfo(MWVehicleInfo *vehicleinfo)
 {
     AMBVehicleInfo ambvehicleinfo[maxambdatasize];
-    DebugOut() << "VICCOMM" << " in setAMBVehicleInfo(" << vehicleinfo->name
-               << ")" << " status[0] = " << vehicleinfo->status[0] << "\n";
+    DebugOut(8) << "VICCOMM" << " in setAMBVehicleInfo(" << vehicleinfo->name
+                << ")" << " status[0] = " << vehicleinfo->status[0] << "\n";
     resetAmbBuf(&ambvehicleinfo[0], maxambdatasize);
     int ret = converter->convertMWtoAMB(vehicleinfo, &ambvehicleinfo[0],
                                         maxambdatasize);
     for (int i = 0; i < ret; i++) {
         ambif->requestUpdate(&ambvehicleinfo[i]);
-        DebugOut() << "VICCOMM" << " out setAMBVehicleInfo(AMBname = "
-                   << ambvehicleinfo[i].name << ","
-                   << ambvehicleinfo[i].value->toString() << ")\n";
+        DebugOut(8) << "VICCOMM" << " out setAMBVehicleInfo(AMBname = "
+                    << ambvehicleinfo[i].name << ","
+                    << ambvehicleinfo[i].value->toString() << ")\n";
     }
     for (int i = 0; i < maxambdatasize; i++) {
         if (ambvehicleinfo[i].value != NULL) {
@@ -64,7 +64,7 @@ VICCommunicator::setAMBVehicleInfo(MWVehicleInfo *vehicleinfo)
         }
     }
     DebugOut(10) << "VICCOMM" << " out setAMBVehicleInfo(MWname = "
-            << vehicleinfo->name << ")";
+            << vehicleinfo->name << ")\n";
 }
 
 void
@@ -73,8 +73,8 @@ VICCommunicator::getAMBVehicleInfo(MWVehicleInfo *vehicleinfo)
     AMBVehicleInfo *ambvehicleinfo[maxambdatasize];
     AMBVehicleInfo tempambvehicleinfo[maxambdatasize];
 
-    DebugOut() << "VICCOMM" << " in getAMBVehicleInfo(" << vehicleinfo->name
-            << "," << vehicleinfo->status[0] << ")\n";
+    DebugOut(8) << "VICCOMM" << " in getAMBVehicleInfo(" << vehicleinfo->name
+                << "," << vehicleinfo->status[0] << ")\n";
     resetAmbBuf(&tempambvehicleinfo[0], maxambdatasize);
     int ret = converter->convertMWtoAMB(vehicleinfo, &tempambvehicleinfo[0],
                                         maxambdatasize);
@@ -82,27 +82,27 @@ VICCommunicator::getAMBVehicleInfo(MWVehicleInfo *vehicleinfo)
         delete tempambvehicleinfo[i].value;
         ambvehicleinfo[i] = ambif->getPropertyRequest(
                 tempambvehicleinfo[i].name);
-        DebugOut() << "VICCOMM" << " getAMBVehicleInfo(AMBname = "
-                   << ambvehicleinfo[i]->name << ","
-                   << ambvehicleinfo[i]->value->toString() << ")\n";
+        DebugOut(8) << "VICCOMM" << " getAMBVehicleInfo(AMBname = "
+                    << ambvehicleinfo[i]->name << ","
+                    << ambvehicleinfo[i]->value->toString() << ")\n";
         converter->convertAMBtoMW(ambvehicleinfo[i], vehicleinfo);
     }
-    DebugOut() << "VICCOMM" << " out getAMBVehicleInfo(MWname = "
-               << vehicleinfo->name << "," << vehicleinfo->status[0] << ")\n";
+    DebugOut(8) << "VICCOMM" << " out getAMBVehicleInfo(MWname = "
+                << vehicleinfo->name << "," << vehicleinfo->status[0] << ")\n";
 }
 
 void
 VICCommunicator::setMWVehicleInfo(AMBVehicleInfo *vehicleinfo)
 {
     MWVehicleInfo mwvehicleinfo;
-    DebugOut() << "VICCOMM" << " in setMWVehicleInfo(AMBname = "
-               << vehicleinfo->name << "," << vehicleinfo->value->toString()
-               << ")\n";
+    DebugOut(8) << "VICCOMM" << " in setMWVehicleInfo(AMBname = "
+                << vehicleinfo->name << "," << vehicleinfo->value->toString()
+                << ")\n";
     resetMwBuf(&mwvehicleinfo);
     converter->convertAMBtoMW(vehicleinfo, &mwvehicleinfo);
     mwif->send(&mwvehicleinfo);
-    DebugOut() << "VICCOMM" << " out setMWVehicleInfo(MWname = "
-               << mwvehicleinfo.name << "," << mwvehicleinfo.status[0] << ")\n";
+    DebugOut(8) << "VICCOMM" << " out setMWVehicleInfo(MWname = "
+                << mwvehicleinfo.name << "," << mwvehicleinfo.status[0] << ")\n";
 }
 
 void

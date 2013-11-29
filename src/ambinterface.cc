@@ -33,12 +33,17 @@ create(AbstractRoutingEngine* routingengine, map<string, string> config)
 {
     AMBIF *ambif = new AMBIF(routingengine, config);
     AMBConfig *conf = new AMBConfig();
-    conf->readConfig(config["configfile"]);
+    if (!conf->readConfig(config["configfile"])) {
+        DebugOut(DebugOut::Error) << "Failed to Load Configfile for VIC-Plugin.\n";
+        delete ambif;
+        delete conf;
+        return NULL;
+    }
     VICCommunicator *communicator = new VICCommunicator();
     MWIF *mwif = new MWIF();
     Converter *converter = new Converter();
     if (!ambif->initialize(communicator, conf)) {
-        DebugOut() << "Failed to initialize AMBIF\n";
+        DebugOut(DebugOut::Error) << "Failed to initialize AMBIF\n";
         delete ambif;
         delete conf;
         delete communicator;
@@ -46,7 +51,7 @@ create(AbstractRoutingEngine* routingengine, map<string, string> config)
         return NULL;
     }
     if (!communicator->initialize(ambif, mwif, converter)) {
-        DebugOut() << "Failed to initialize VICCommunicator\n";
+        DebugOut(DebugOut::Error) << "Failed to initialize VICCommunicator\n";
         delete ambif;
         delete conf;
         delete communicator;
@@ -54,7 +59,7 @@ create(AbstractRoutingEngine* routingengine, map<string, string> config)
         return NULL;
     }
     if (!mwif->initialize(communicator, conf)) {
-        DebugOut() << "Failed to initialize MWIF\n";
+        DebugOut(DebugOut::Error) << "Failed to initialize MWIF\n";
         delete ambif;
         delete conf;
         delete communicator;
@@ -62,7 +67,7 @@ create(AbstractRoutingEngine* routingengine, map<string, string> config)
         return NULL;
     }
     if (!converter->initialize(conf)) {
-        DebugOut() << "Failed to initialize Converter\n";
+        DebugOut(DebugOut::Error) << "Failed to initialize Converter\n";
         delete ambif;
         delete conf;
         delete communicator;
@@ -89,11 +94,11 @@ void
 AMBIF::getPropertyAsync(AsyncPropertyReply *reply)
 {
     reply->success = false;
-    DebugOut() << "AMBIF " << "Get Request property : " << reply->property
+    DebugOut(10) << "AMBIF " << "Get Request property : " << reply->property
             << std::endl;
     lock();
     AMBVehicleInfo *vehicleinfo = find(reply->property);
-    DebugOut() << "AMBIF " << "Find Data : " << reply->property << std::endl;
+    DebugOut(50) << "AMBIF " << "Find Data : " << reply->property << std::endl;
     if (vehicleinfo != NULL) {
         reply->value = vehicleinfo->value;
         reply->success = true;
@@ -105,7 +110,7 @@ AMBIF::getPropertyAsync(AsyncPropertyReply *reply)
 AsyncPropertyReply *
 AMBIF::setProperty(AsyncSetPropertyRequest request)
 {
-    DebugOut() << "AMBIF" << "Set Request propety : " << request.property
+    DebugOut(10) << "AMBIF" << "Set Request propety : " << request.property
                << std::endl;
     lock();
     AMBVehicleInfo *vehicleinfo = find(request.property);
@@ -115,16 +120,19 @@ AMBIF::setProperty(AsyncSetPropertyRequest request)
     }
     AsyncPropertyReply *reply = new AsyncPropertyReply(request);
     reply->success = true;
-    DebugOut(10) << "AMBIF" << "Update Value!" << std::endl;
+    DebugOut(50) << "AMBIF" << "Update Value!" << std::endl;
     delete vehicleinfo->value;
     vehicleinfo->value = request.value->copy();
     reply->value = vehicleinfo->value;
     communicator->setMWVehicleInfo(vehicleinfo);
-    DebugOut() << "AMBIF setProperty " << "Set Value(" << request.property
+    DebugOut(50) << "AMBIF setProperty " << "Set Value(" << request.property
                << "," << reply->value->toString() << ")" << std::endl;
     reply->completed(reply);
-    routingEngine->updateProperty(vehicleinfo->name, vehicleinfo->value,
-                                  uuid());
+    #if LATER1024
+    routingEngine->updateProperty(vehicleinfo->value, uuid());
+    #else
+    routingEngine->updateProperty(vehicleinfo->name, vehicleinfo->value, uuid());
+    #endif
     unLock();
     return reply;
 }
@@ -141,7 +149,11 @@ AMBIF::supportedOperations()
     return Get | Set;
 }
 
+#if LATER1024
 const string
+#else
+string
+#endif
 AMBIF::uuid()
 {
     return "f68f8b9a-fafb-4284-8ced-b45b5d720185";
@@ -151,6 +163,7 @@ void
 AMBIF::propertyChanged(VehicleProperty::Property property,
                        AbstractPropertyType *value, std::string uuid)
 {
+    DebugOut(1) << "INFO CHG_VIC_INF Receive notification from Core. Property is " << property << ".\n";
     AMBVehicleInfo *vehicleinfo = find(property);
     lock();
     if (vehicleinfo != NULL) {
@@ -168,7 +181,7 @@ AMBIF::setConfiguratin(std::map<std::string, std::string> config)
 bool
 AMBIF::initialize(VICCommunicator *comm, AMBConfig *conf)
 {
-    DebugOut() << "AMBIF Initialize\n";
+    DebugOut(50) << "AMBIF Initialize\n";
     communicator = comm;
     mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -185,7 +198,7 @@ AMBIF::initialize(VICCommunicator *comm, AMBConfig *conf)
             if (vi.value == nullptr) {
                 if (!registVehicleInfo(vi.name, (*itr2).type,
                                        (*itr2).defaultvalue)) {
-                    DebugOut() << "AMBIF Initialize Couldn't regist property["
+                    DebugOut(50) << "AMBIF Initialize Couldn't regist property["
                                << vi.name << "]\n";
                     continue;
                 }
@@ -193,28 +206,30 @@ AMBIF::initialize(VICCommunicator *comm, AMBConfig *conf)
                         vi.name, (*itr2).defaultvalue);
                 vi.isCustom = true;
             }
+            vi.zone = (*itr2).zone;
             vehicleinfoArray.push_back(vi);
             propertylist.push_back(vi.name);
-            DebugOut() << "AMBIF Initialize regist propertyname = " << vi.name
+            DebugOut(50) << "AMBIF Initialize regist propertyname = " << vi.name
                        << "\n";
         }
     }
     routingEngine->setSupported(supported(), this);
+    DebugOut(1) << "INFO CHG_VIC_INF The number of AMB vehicle info is " << vehicleinfoArray.size() << ".\n";
     return true;
 }
 
 AMBVehicleInfo *
 AMBIF::getPropertyRequest(std::string propertyname)
 {
-    DebugOut() << "AMBIF getPropertyRequest(" << propertyname << ")\n";
+    DebugOut(50) << "AMBIF getPropertyRequest(" << propertyname << ")\n";
     AsyncPropertyRequest request;
     request.property = propertyname;
     request.completed = [](AsyncPropertyReply *reply) {
         if (reply->success) {
-            DebugOut() << "AMBIF getPropertyRequest completed success!!.\n";
+            DebugOut(50) << "AMBIF getPropertyRequest completed success!!.\n";
         }
         else {
-            DebugOut() << "AMBIF getPropertyRequest completed false!!.\n";
+            DebugOut(50) << "AMBIF getPropertyRequest completed false!!.\n";
         }
     };
 
@@ -232,7 +247,7 @@ AMBIF::getPropertyRequest(std::string propertyname)
     }
     delete reply;
     unLock();
-    DebugOut() << "AMBIF getPropertyRequest after call "
+    DebugOut(50) << "AMBIF getPropertyRequest after call "
                << vehicleinfo->value->toString() << std::endl;
     return vehicleinfo;
 }
@@ -246,10 +261,10 @@ AMBIF::setPropertyRequest(AMBVehicleInfo *vehicleinfo)
     request.completed =
             [](AsyncPropertyReply *reply) {
                 if (reply->success) {
-                    DebugOut()<<"AMBIF" << reply->property << ":" << reply->value->toString() << std::endl;
+                    DebugOut(50)<<"AMBIF" << reply->property << ":" << reply->value->toString() << std::endl;
                 }
                 else {
-                    DebugOut()<<"AMBIF" << reply->property << " isn't registered." << std::endl;
+                    DebugOut(50)<<"AMBIF" << reply->property << " isn't registered." << std::endl;
                 }
             };
     AsyncPropertyReply *reply = routingEngine->setProperty(request);
@@ -261,8 +276,27 @@ AMBIF::setPropertyRequest(AMBVehicleInfo *vehicleinfo)
 void
 AMBIF::updateProperty(AMBVehicleInfo *vehicleinfo)
 {
-    routingEngine->updateProperty(vehicleinfo->name, vehicleinfo->value,
-                                  uuid());
+    if (vehicleinfo->name == VehicleProperty::VehicleSpeed) {
+        static uint16_t prevspd = -1;
+        static const uint16_t unusablespd = -1;
+        uint16_t spd = vehicleinfo->value->value<uint16_t>();
+        if ((prevspd == unusablespd && spd > 0) || (prevspd == 0 && spd > 0)) {
+            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " 
+                        << vehicleinfo->name 
+                        << ". VehicleSpeed is 1km/h or more.\n";
+        }
+        else if ((prevspd == unusablespd && spd == 0) || 
+                 (prevspd > 0 && spd == 0)) {
+            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " 
+                        << vehicleinfo->name << ". VehicleSpeed is 0km/h.\n";
+        }
+        prevspd = spd;
+    }
+    #if LATER1024
+    routingEngine->updateProperty(vehicleinfo->value, uuid());
+    #else
+    routingEngine->updateProperty(vehicleinfo->name, vehicleinfo->value, uuid());
+    #endif
     AMBVehicleInfo *ambvehicleinfo = find(vehicleinfo->name);
     lock();
     if (ambvehicleinfo != NULL) {
@@ -287,9 +321,12 @@ AMBIF::unLock()
 void
 AMBIF::requestUpdate(AMBVehicleInfo *vehicleinfo)
 {
-    DebugOut() << "AMBIF requestUpdate request property name is "
+    DebugOut(50) << "AMBIF requestUpdate request property name is "
                << vehicleinfo->name << "\n";
     if (find(vehicleinfo->name) != NULL) {
+        vehicleinfo->value->zone = vehicleinfo->zone;
+        DebugOut(50) << "AMBIF requestUpdate request property name is "
+                   << vehicleinfo->name << ", zone is " << vehicleinfo->zone << "\n";
         updateProperty(vehicleinfo);
     }
     else {
@@ -300,7 +337,7 @@ AMBIF::requestUpdate(AMBVehicleInfo *vehicleinfo)
 bool
 AMBIF::registVehicleInfo(std::string propertyName, DataType type, string value)
 {
-    DebugOut() << "AMBIF registVehicleInfo(" << propertyName << ")\n";
+    DebugOut(50) << "AMBIF registVehicleInfo(" << propertyName << ")\n";
     VehicleProperty::PropertyTypeFactoryCallback factory;
     switch (type) {
     case INT:
@@ -377,11 +414,38 @@ AMBIF::registVehicleInfo(std::string propertyName, DataType type, string value)
 AMBVehicleInfo *
 AMBIF::find(std::string propertyName)
 {
-    for (auto itr = vehicleinfoArray.begin(); itr != vehicleinfoArray.end();
-            itr++) {
-        if ((*itr).name == propertyName) {
-            return &(*itr);
-        }
+    AMBVehicleInfo vi;
+    vi.name = propertyName;
+    std::vector<AMBVehicleInfo>::iterator itr;
+    if ((itr = std::find(vehicleinfoArray.begin(), vehicleinfoArray.end(), vi)) 
+        != vehicleinfoArray.end()) {
+        return &(*itr);
     }
     return NULL;
 }
+
+#if LATER1024
+PropertyInfo AMBIF::getPropertyInfo(VehicleProperty::Property property) {
+    if (propertyInfoMap.find(property) != propertyInfoMap.end()) {
+        return propertyInfoMap[property];
+    }
+    std::list<Zone::Type> zones;
+    AMBVehicleInfo vi;
+    vi.name = property;
+    std::vector<AMBVehicleInfo>::iterator itr, itr_idx, itr_end;
+    itr_idx = vehicleinfoArray.begin();
+    itr_end = vehicleinfoArray.end();
+    while ((itr = std::find(itr_idx, itr_end, vi)) != itr_end) {
+        zones.push_back((*itr).zone);
+        itr_idx = (++itr);
+    }
+    if (zones.empty()) {
+        return PropertyInfo::invalid();
+    }
+    else {
+        PropertyInfo info(0, zones);
+        propertyInfoMap[vi.name] = info;
+        return propertyInfoMap[vi.name];
+    }
+}
+#endif

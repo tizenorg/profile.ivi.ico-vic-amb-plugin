@@ -64,16 +64,17 @@ AMBConfig::parseJson(std::string config)
 
     if (err != json_tokener_success) {
         std::cerr << "Error: " << json_tokener_error_desc(err) << "\n";
+        DebugOut(DebugOut::Error) << json_tokener_error_desc(err) << "\n";
         return ret;
     }
     json_object *configobject = json_object_object_get(rootobject, "Config");
     if (!configobject) {
-        DebugOut() << "Error getting Config\n";
+        DebugOut(DebugOut::Error) << "Can't find key[\"Config\"].\n";
         return ret;
     }
     array_list *configlist = json_object_get_array(configobject);
     if (configlist == NULL) {
-        DebugOut() << "Config is not Array.\n";
+        DebugOut(DebugOut::Error) << "\"Config\" is not array.\n";
         return ret;
     }
     for (int i = 0; i < array_list_length(configlist); i++) {
@@ -96,10 +97,12 @@ AMBConfig::parseJson(std::string config)
         }
         array_list *definelist = json_object_get_array(defineobj);
         if (definelist == NULL) {
+            DebugOut(DebugOut::Error) << "\"VehicleInfoDefine\" "
+                                      << "is not array.\n";
             break;
         }
         for (int j = 0; j < array_list_length(definelist); j++) {
-            DebugOut() << "VehicleInfoDefine : " << j << "/"
+            DebugOut(10) << "VehicleInfoDefine : " << j << "/"
                        << array_list_length(definelist) << "\n";
             json_object *obj_vi =
                     reinterpret_cast<json_object*>(array_list_get_idx(
@@ -111,7 +114,14 @@ AMBConfig::parseJson(std::string config)
             json_object *keyeventtypeobj = json_object_object_get(
                     obj_vi, "KeyEventType");
             if (keyeventtypeobj == NULL) {
+                DebugOut(DebugOut::Warning) << "\"KeyEventType\" "
+                                            << "is not defined.\n";
                 continue;
+            }
+            if (std::string(json_object_get_string(keyeventtypeobj)).size() > 63) {
+                DebugOut(DebugOut::Warning) << "Don't allow length of "
+                                            << "\"KeyEventType\"'s value.\n";
+                break;
             }
             strcpy(vid.KeyEventType, json_object_get_string(keyeventtypeobj));
             json_object *statusobj = json_object_object_get(obj_vi, "Status");
@@ -133,12 +143,16 @@ AMBConfig::parseJson(std::string config)
                 json_object *statuschildobj = json_object_object_get(
                         obj_sts, "AMBPropertyName");
                 if (statuschildobj == NULL) {
+                    DebugOut(DebugOut::Warning) << "\"AMBPropertyName\" "
+                                                << "is not defined.\n";
                     continue;
                 }
                 status.ambPropertyName = string(
                         json_object_get_string(statuschildobj));
                 statuschildobj = json_object_object_get(obj_sts, "Type");
                 if (statuschildobj == NULL) {
+                    DebugOut(DebugOut::Warning) << "\"Type\" "
+                                                << "is not defined.\n";
                     continue;
                 }
                 status.type =
@@ -146,6 +160,8 @@ AMBConfig::parseJson(std::string config)
                                 statuschildobj)),
                                 &status.typesize);
                 if (status.type == NONE) {
+                    DebugOut(DebugOut::Warning) << "\"Type\"'s value "
+                                                << "is not defined.\n";
                     continue;
                 }
                 statuschildobj = json_object_object_get(obj_sts,
@@ -165,6 +181,18 @@ AMBConfig::parseJson(std::string config)
                 if (statuschildobj != NULL) {
                     status.dbusPropertyName = string(
                             json_object_get_string(statuschildobj));
+                }
+                statuschildobj = json_object_object_get(obj_sts,
+                                                        "DBusObjectName");
+                if (statuschildobj != NULL) {
+                    status.dbusObjectName = string(
+                            json_object_get_string(statuschildobj));
+                }
+                statuschildobj = json_object_object_get(obj_sts,
+                                                        "Zone");
+                if (statuschildobj != NULL) {
+                    status.zone = getZone(string(
+                            json_object_get_string(statuschildobj)));
                 }
                 vid.status.push_back(status);
             }
@@ -190,36 +218,56 @@ AMBConfig::parseJson(std::string config)
         json_object *defaultportobj = json_object_object_get(obj,
                                                              "DefaultInfoPort");
         if (defaultportobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"DefaultInfoPort\" "
+                                      << "is not defined.\n";
             break;
         }
         json_object *portobj = json_object_object_get(defaultportobj,
                                                       "DataPort");
         if (portobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"DefaultInfoPort\"->"
+                                      << "\"DataPort\" "
+                                      << "is not defined.\n";
             break;
         }
         portinfo.standard.dataPort = json_object_get_int(portobj);
         portobj = json_object_object_get(defaultportobj, "CtrlPort");
         if (portobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"DefaultInfoPort\"->"
+                                      << "\"CtrlPort\" "
+                                      << "is not defined.\n";
             break;
         }
         portinfo.standard.controlPort = json_object_get_int(portobj);
         json_object *customportobj = json_object_object_get(
                 obj, "CustomizeInfoPort");
         if (customportobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"CustomeizeInfoPort\"->"
+                                      << "is not defined.\n";
             break;
         }
         portobj = json_object_object_get(customportobj, "DataPort");
         if (portobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"CustomeizeInfoPort\"->"
+                                      << "\"DataPort\" "
+                                      << "is not defined.\n";
             break;
         }
         portinfo.custom.dataPort = json_object_get_int(portobj);
         portobj = json_object_object_get(customportobj, "CtrlPort");
         if (portobj == NULL) {
+            DebugOut(DebugOut::Error) << "\"CustomeizeInfoPort\"->"
+                                      << "\"CtrlPort\" "
+                                      << "is not defined.\n";
             break;
         }
         portinfo.custom.controlPort = json_object_get_int(portobj);
         ret = true;
         break;
+    }
+    if (vehicleinfoList.empty()) {
+        ret = false;
+        DebugOut(DebugOut::Error) << "Can't load vehicle information.\n";
     }
 
     return ret;
@@ -266,4 +314,51 @@ AMBConfig::getType(char *type, int *size)
     }
     *size = 0;
     return NONE;
+}
+
+Zone::Type 
+AMBConfig::getZone(const std::string& zonestr) {
+    DebugOut(50) << "Zone string = " << zonestr << "\n";
+#if LATER1024
+    if (zonestr == "None") {
+        return Zone::None;
+    }
+    else if (zonestr == "Front") {
+        return Zone::Front;
+    }
+    else if (zonestr == "Middle") {
+        return Zone::Middle;
+    }
+    else if (zonestr == "Right") {
+        return Zone::Right;
+    }
+    else if (zonestr == "Left") {
+        return Zone::Left;
+    }
+    else if (zonestr == "Rear") {
+        return Zone::Rear;
+    }
+    else if (zonestr == "Center") {
+        return Zone::Center;
+    }
+    else if (zonestr == "FrontRight") {
+        return Zone::FrontRight;
+    }
+    else if (zonestr == "FrontLeft") {
+        return Zone::FrontLeft;
+    }
+    else if (zonestr == "MiddleRight") {
+        return Zone::MiddleRight;
+    }
+    else if (zonestr == "MiddleLeft") {
+        return Zone::MiddleLeft;
+    }
+    else if (zonestr == "RearRight") {
+        return Zone::RearRight;
+    }
+    else if (zonestr == "RearLeft") {
+        return Zone::RearLeft;
+    }
+#endif
+    return Zone::None;
 }

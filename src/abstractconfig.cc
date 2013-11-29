@@ -39,5 +39,10 @@ AbstractConfig::readConfig(std::string confpath)
         getline(in, line);
         output.append(line);
     }
-    return parseJson(output);
+    if (output.empty()) {
+        return false;
+    }
+    else {
+        return parseJson(output);
+    }
 }

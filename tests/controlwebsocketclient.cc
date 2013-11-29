@@ -1,220 +1,111 @@
-/**
- * Copyright (C) 2012  TOYOTA MOTOR CORPORATION.
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- * 
- */
-#include <string.h>
-#include <unistd.h>
-
+#include <cstdio>
 #include <iostream>
-#include <sstream>
+#include <sys/time.h>
 
-#include "debugout.h"
-
-#include "config.h"
-#include "controlwebsocketclient.h"
 #include "datamessage.h"
-#include "eventmessage.h"
-#include "messageformat.h"
 
-pthread_mutex_t ControlWebsocketClient::mutex_scenario =
-        PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t ControlWebsocketClient::cond_scenario = PTHREAD_COND_INITIALIZER;
-std::string ControlWebsocketClient::vehiclename_scenario = "";
-void *ControlWebsocketClient::wsi[4] = {NULL, NULL, NULL, NULL};
+#include "controlwebsocketclient.h"
 
-ControlWebsocketClient::ControlWebsocketClient()
-{
-    mutex = PTHREAD_MUTEX_INITIALIZER;
+ControlWebsocketClient::ControlWebsocketClient() 
+: context_(NULL), wsid_(NULL), fd_(0) {
 }
 
-ControlWebsocketClient::~ControlWebsocketClient()
-{
+ControlWebsocketClient::~ControlWebsocketClient() {
 }
 
-bool
-ControlWebsocketClient::initialize(int port,
-                                   enum ControlWebsocket::ServerProtocol stype)
-{
-    DebugOut(10) << "ControlWebsocketClient initialize.(" << port << ")\n";
-    type = stype;
-    stringstream address, protocol;
-    address.str("");
-    address << "ws://127.0.0.1:" << port;
-    protocol.str("");
-    switch (type) {
-    case ControlWebsocket::DATA_STANDARD:
-    {
-        protocol << "standarddatamessage-only";
-        break;
-    }
-    case ControlWebsocket::CONTROL_STANDARD:
-    {
-        protocol << "standardcontrolmessage-only";
-        break;
-    }
-    case ControlWebsocket::DATA_CUSTOM:
-    {
-        protocol << "customdatamessage-only";
-        break;
-    }
-    case ControlWebsocket::CONTROL_CUSTOM:
-    {
-        protocol << "customcontrolmessage-only";
-        break;
-    }
-    default:
-    {
+bool ControlWebsocketClient::initialize(const char *uri, const int port, const char *protocol) {
+    /* Memo */
+    /* If strlen(uri) == 0, websocket server. If strlen(uri) > 0, websocket client. */
+    if ((uri == NULL || strlen(uri) == 0) || (port < 1 || port > 65535) || (protocol == NULL || strlen(protocol) == 0)) {
         return false;
     }
-    }
-    context = ico_uws_create_context(address.str().c_str(),
-                                     protocol.str().c_str());
-    if (context == NULL) {
+    char uribuf[256];
+    memset(uribuf, 0, sizeof(uribuf));
+    sprintf(uribuf, "%s:%d", uri, port);
+    context_ = ico_uws_create_context(uribuf, protocol);
+    if (context_ == NULL) {
         return false;
     }
-    if (ico_uws_set_event_cb(context, ControlWebsocketClient::callback_receive,
-                             ((void *)type)) != 0) {
-        DebugOut() << "ControlWebsocket[" << type << "]"
-                   << " couldn't set callback function." << std::endl;
-        return false;
-    }
-    /*
-     socket = libwebsocket_client_connect(context, "127.0.0.1", port, 0, "/",
-     "localhost", "websocket",
-     protocollist[0].name, -1);
-     if (socket == NULL) {
-     return false;
-     }
-     */
-    if (pthread_create(&threadid, NULL, ControlWebsocketClient::run,
-                       (void*)this) == -1) {
-        ico_uws_close(context);
+
+    int ret = ico_uws_set_event_cb(context_, callbackfunc, this);
+    if (ret != ICO_UWS_ERR_NONE) {
+        terminate();
         return false;
     }
     return true;
 }
 
-bool
-ControlWebsocketClient::send(char *keyeventtype, timeval time, void *data,
-                             size_t len)
-{
-    pthread_mutex_lock(&mutex);
-    memset(buf, 0, sizeof(buf));
-    switch (type) {
-    case ControlWebsocket::DATA_STANDARD:
-    case ControlWebsocket::DATA_CUSTOM:
-    {
-        memcpy(buf,
-               datamsg.encode(keyeventtype, time,
-                              *(reinterpret_cast<DataOpt*>(data))),
-                              len);
-        DebugOut(10) << keyeventtype << " encode\n";
-        break;
+void ControlWebsocketClient::terminate() {
+    if (context_ != NULL) {
+        ico_uws_unset_event_cb(context_);
+        ico_uws_close(context_);
+        fd_ = 0;
     }
-    case ControlWebsocket::CONTROL_STANDARD:
-    case ControlWebsocket::CONTROL_CUSTOM:
-    {
-        memcpy(buf,
-               eventmsg.encode(keyeventtype, time,
-                               *(reinterpret_cast<EventOpt*>(data))),
-               len);
-        break;
-    }
-    default:
-    {
+}
+
+bool ControlWebsocketClient::send(char *sendbuf, const size_t len) {
+    if (context_ == NULL || wsid_ == NULL) {
         return false;
-        break;
     }
-    }
-    ico_uws_send(context, wsi[type], reinterpret_cast<unsigned char*>(buf),
-                 len);
-    pthread_mutex_unlock(&mutex);
+    ico_uws_send(context_, wsid_, reinterpret_cast<unsigned char*>(sendbuf), len);
     return true;
 }
 
-bool
-ControlWebsocketClient::receive(char *keyeventtype, timeval recordtime,
-                                void *data, size_t len)
-{
-    datamsg.decodeOpt(keyeventtype, recordtime, data);
+bool ControlWebsocketClient::recv(char *recvbuf, const size_t len) {
+    std::cout << &recvbuf[0] << " ";
+    DataMessage dmsg;
+    dmsg.decode(recvbuf, len);
+    timeval tv;
+    tv = dmsg.getRecordtime();
+    std::cout << tv.tv_sec << "." << tv.tv_usec << " ";
+    DataOpt dopt = dmsg.getDataOpt();
+    std::cout << dopt.common_status << " ";
+    int statuslen = getStatussize(len);
+    for (int i = 0; i < statuslen; i++) {
+        std::cout << static_cast<int>(dopt.status[i]);
+    }
+    
+    std::cout << std::endl;
     return true;
 }
 
-void
-ControlWebsocketClient::observation()
-{
-    while (true) {
-        ico_uws_service(context);
-        usleep(50);
-    }
+int ControlWebsocketClient::getsocketid() const {
+    return fd_;
 }
 
-void
-ControlWebsocketClient::callback_receive(const struct ico_uws_context *context,
-                                         const ico_uws_evt_e event,
-                                         const void *id,
-                                         const ico_uws_detail *detail,
-                                         void *user_data)
-{
+void ControlWebsocketClient::setsocketid(int fd) {
+    fd_ = fd;
+}
+
+void ControlWebsocketClient::setwsid(void *id) {
+    wsid_ = id;
+}
+
+void ControlWebsocketClient::service() {
+    ico_uws_service(context_);
+}
+
+void ControlWebsocketClient::callbackfunc(const struct ico_uws_context *context, const ico_uws_evt_e event, const void *id, const ico_uws_detail *detail, void *user_data) {
+    ControlWebsocketClient *client = reinterpret_cast<ControlWebsocketClient*>(user_data);
     switch (event) {
-    case ICO_UWS_EVT_OPEN:
-    {
-        int idx = reinterpret_cast<int>(user_data);
-        DebugOut() << "Open. wsi index = " << idx << "\n";
-        ControlWebsocketClient::wsi[idx] = const_cast<void*>(id);
+    case ICO_UWS_EVT_RECEIVE :
+        //std::cout << "ICO_UWS_EVT_RECEIV\n";
+        client->recv(reinterpret_cast<char*>(detail->_ico_uws_message.recv_data), detail->_ico_uws_message.recv_len);
         break;
-    }
-    case ICO_UWS_EVT_ERROR:
-        break;
-    case ICO_UWS_EVT_CLOSE:
-    {
-        int idx = reinterpret_cast<int>(user_data);
-        ControlWebsocketClient::wsi[idx] = NULL;
-        break;
-    }
-    case ICO_UWS_EVT_RECEIVE:
-    {
-        DataMessage msg;
-        char *recvbuf =
-                reinterpret_cast<char*>(detail->_ico_uws_message.recv_data);
-        msg.decode(recvbuf, detail->_ico_uws_message.recv_len);
-        DebugOut(10) << "[R]: " << msg.getKeyEventType() << " , "
-                     << msg.getRecordtime().tv_sec << "."
-                     << msg.getRecordtime().tv_usec << " , ";
-        if (string(msg.getKeyEventType())
-                == ControlWebsocketClient::vehiclename_scenario) {
-            pthread_cond_signal(&ControlWebsocketClient::cond_scenario);
+    case ICO_UWS_EVT_ADD_FD :
+        //std::cout << "ICO_UWS_EVT_ADD_FD\n";
+        if (detail->_ico_uws_fd.fd > 0) {
+            client->setsocketid(detail->_ico_uws_fd.fd);
         }
+        client->setwsid(const_cast<void*>(id));
+        break;
+    case ICO_UWS_EVT_DEL_FD :
+        //std::cout << "ICO_UWS_EVT_DEL_FD\n";
+        client->setsocketid(0);
+        client->setwsid(NULL);
+        break;
+    default :
         break;
     }
-    case ICO_UWS_EVT_ADD_FD:
-        break;
-    case ICO_UWS_EVT_DEL_FD:
-        break;
-    default:
-        break;
-    }
-}
-
-void *
-ControlWebsocketClient::run(void *arg)
-{
-    ControlWebsocketClient *control =
-            reinterpret_cast<ControlWebsocketClient*>(arg);
-    control->observation();
-    return NULL;
+    return;
 }

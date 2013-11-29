@@ -89,8 +89,14 @@ private:
             std::string ambname;
             DataType type;
             int typesize;
+            Zone::Type zone;
         };
         std::vector<AmbVehicleInfoData> ambdataarray;
+
+        bool operator==(const ConvertTable &b) {
+            return (this->mwname == b.mwname);
+        }
+
     };
 
     std::vector<ConvertTable> converttablelist;

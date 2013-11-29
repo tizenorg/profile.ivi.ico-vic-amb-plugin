@@ -21,6 +21,8 @@
 
 #include <vector>
 
+#include <abstractpropertytype.h>
+
 #include "abstractconfig.h"
 #include "common.h"
 
@@ -36,6 +38,8 @@ struct VehicleInfoDefine {
         std::string accessControl;
         std::string defaultvalue;
         std::string dbusPropertyName;
+        std::string dbusObjectName;
+        Zone::Type zone;
     };
     /* ToDo */
     //undefine data structure;
@@ -106,6 +110,9 @@ private:
 
     DataType
     getType(char *type, int *size);
+
+    Zone::Type
+    getZone(const std::string& zonestr);
 
     std::vector<VehicleInfoDefine> vehicleinfoList;
     PortInfo portinfo;
