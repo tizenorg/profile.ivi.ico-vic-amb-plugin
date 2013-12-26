@@ -398,36 +398,26 @@ ControlWebsocket::callback_receive(const struct ico_uws_context *context,
         break;
     case ICO_UWS_EVT_RECEIVE:
     {
-        DebugOut(10) << "ControlWebsocket Start callback_recevie"
-                     << " Receive message.\n";
+        DebugOut(10) << "ControlWebsocket Start callback_recevie Receive message.\n";
         GenerateCommID<void*> *idserver = GenerateCommID<void*>::getInstance();
         int commid = idserver->getID(const_cast<void*>(id), -1);
         StandardMessage msg;
         char *buf = reinterpret_cast<char*>(detail->_ico_uws_message.recv_data);
         if (strcmp(&buf[0], "VELOCITY") == 0) {
             static uint16_t prevspd = -1;
-            static const uint16_t unusablespd = -1;
+            static uint16_t spdmax = -1;
             uint16_t spd = 0;
-            memcpy(&spd, 
-                   buf + StandardMessage::KEYEVENTTYPESIZE + 
-                   sizeof(struct timeval) + sizeof(int), 
-                   sizeof(uint16_t));
-            if ((prevspd == unusablespd && spd > 0) || 
-                (prevspd == 0 && spd > 0)) {
-                DebugOut(3) << "PERF CHG_VIC_INF Receive from VIC. Message is " 
-                            << &buf[0] << ". VELOCITY is 1km/h or more.\n";
+            memcpy(&spd, buf + StandardMessage::KEYEVENTTYPESIZE + sizeof(struct timeval) + sizeof(int), sizeof(uint16_t));
+            if ((prevspd == spdmax && spd > 0) || (prevspd == 0 && spd > 0)) {
+                DebugOut(3) << "PERF CHG_VIC_INF Receive from VIC. Message is " << &buf[0] << ". VELOCITY is 1km/h or more.\n";
             }
-            else if ((prevspd == unusablespd && spd == 0) || 
-                     (prevspd > 0 && spd == 0)) {
-                DebugOut(3) << "PERF CHG_VIC_INF Receive from VIC. Message is " 
-                            << &buf[0] << ". VELOCITY is 0km/h.\n";
+            else if ((prevspd == spdmax && spd == 0) || (prevspd > 0 && spd == 0)) {
+                DebugOut(3) << "PERF CHG_VIC_INF Receive from VIC. Message is " << &buf[0] << ". VELOCITY is 0km/h.\n";
             }
             prevspd = spd;
         }
-        container->ctrlws->receive(commid, buf, 
-                                   detail->_ico_uws_message.recv_len);
-        DebugOut(10) << "ControlWebsocket End " 
-                     << "callback_recevie Receive message.\n";
+        container->ctrlws->receive(commid, buf, detail->_ico_uws_message.recv_len);
+        DebugOut(10) << "ControlWebsocket End callback_recevie Receive message.\n";
         break;
     }
     case ICO_UWS_EVT_ADD_FD:

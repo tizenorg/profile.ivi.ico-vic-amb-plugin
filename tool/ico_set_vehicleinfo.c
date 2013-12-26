@@ -44,7 +44,9 @@ static const struct {
     char        *prop;
     char        *eventtype;
     unsigned char   datatype[5];
-}               vehicleinfo_key[] = {
+}
+
+vehicleinfo_key[] = {
     { "VehicleSpeed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
     { "Speed", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
     { "Velocity", "VELOCITY", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
@@ -61,14 +63,17 @@ static const struct {
     { "Winker", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
     { "TurnSignal", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
     { "Turn", "TURN_SIGNAL", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
-    { "lightStatus", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, 0} },
+    { "lightStatus", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_NULL} },
     { "light", "LIGHTSTATUS", {TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, TYPE_BOOL, 0} },
-    { "WATER_TEMP", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
-    { "EXTERIORBRIGHTNESS", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
-    { "EXTERIOR", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
-    { "STEERING", "STEERING", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
-    { "steering", "STEERING", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
-    { "\0", "\0", {TYPE_NULL, 0, 0, 0, 0} } };
+    { "Warter_Temp", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "WarterTemp", "WATER_TEMP", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "ExteriorBrightness", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
+    { "Exterior", "EXTERIORBRIGHTNESS", {TYPE_UINT16, TYPE_NULL, 0, 0, 0} },
+    { "Steering", "STEERING", {TYPE_INT32, TYPE_NULL, 0, 0, 0} },
+    { "TripMeter", "TRIPMETER", {TYPE_INT16, TYPE_INT16, TYPE_INT16, TYPE_NULL, 0} },
+    { "Fuel", "FUEL", {TYPE_INT16, TYPE_INT16, TYPE_INT16, TYPE_INT16, TYPE_NULL} },
+    { "\0", "\0", {TYPE_NULL, 0, 0, 0, 0} }
+};
 
 struct KeyDataMsg_t
 {
@@ -388,4 +393,3 @@ main(int argc, char *argv[])
 
     exit(0);
 }
-

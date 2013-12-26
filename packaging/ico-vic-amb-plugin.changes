@@ -1,3 +1,8 @@
+* Thu Dec 26 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> submit/tizen/20131219.042044@419946f
+- 0.9.05 release
+-- modified: Add vehicle property to ico_set_vehicleinfo tool.
+-- revise: add manifest file for SMACK label setting
+
 * Fri Nov 29 2013 Shibata Makoto <shibata@mac.tec.toyota.co.jp> accepted/tizen_ivi_stable/20131116.012220@47cc4e3
 - 0.9.04 release
 -- BugFix:TIVI-1991

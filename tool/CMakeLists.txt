@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 2.8)
 include(CheckIncludeFiles)
 
 set(ico_set_vehicleinfo_sources ico_set_vehicleinfo.c)
