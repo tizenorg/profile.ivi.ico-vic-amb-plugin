@@ -278,13 +278,17 @@ AMBIF::updateProperty(AMBVehicleInfo *vehicleinfo)
 {
     if (vehicleinfo->name == VehicleProperty::VehicleSpeed) {
         static uint16_t prevspd = -1;
-        static uint16_t spdmax = -1;
+        static const uint16_t unusablespd = -1;
         uint16_t spd = vehicleinfo->value->value<uint16_t>();
-        if ((prevspd == spdmax && spd > 0) || (prevspd == 0 && spd > 0)) {
-            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " << vehicleinfo->name << ". VehicleSpeed is 1km/h or more.\n";
+        if ((prevspd == unusablespd && spd > 0) || (prevspd == 0 && spd > 0)) {
+            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " 
+                        << vehicleinfo->name 
+                        << ". VehicleSpeed is 1km/h or more.\n";
         }
-        else if ((prevspd == spdmax && spd == 0) || (prevspd > 0 && spd == 0)) {
-            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " << vehicleinfo->name << ". VehicleSpeed is 0km/h.\n";
+        else if ((prevspd == unusablespd && spd == 0) || 
+                 (prevspd > 0 && spd == 0)) {
+            DebugOut(3) << "PERF CHG_VIC_INF VIC-Plugin notify Code of update " 
+                        << vehicleinfo->name << ". VehicleSpeed is 0km/h.\n";
         }
         prevspd = spd;
     }
