@@ -16,10 +16,7 @@ BuildRequires:  libjson-devel
 BuildRequires:  automotive-message-broker-devel >= 0.10.0
 BuildRequires:  ico-uxf-utilities-devel >= 0.9.04
 BuildRequires:  ico-uxf-utilities >= 0.9.04
-BuildRequires:	pkgconfig(ecore)
 BuildRequires:	pkgconfig(elementary)
-BuildRequires:	pkgconfig(edbus)
-BuildRequires:	pkgconfig(dbus-1)
 BuildRequires:	pkgconfig(appcore-efl)
 
 %description 

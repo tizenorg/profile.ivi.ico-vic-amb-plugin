@@ -1,6 +1,6 @@
 include(CheckIncludeFiles)
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
-include_directories(${CMAKE_SOURCE_DIR}/lib ${include_dirs} ${gio_INCLUDE_DIRS} ${gio-unix_INCLUDE_DIRS} ${ambd_INCLUDE_DIRS} ${appcore-efl_INCLUDE_DIRS} ${ecore_INCLUDE_DIRS} ${elementary_INCLUDE_DIRS} ${dbus_INCLUDE_DIRS} ${edbus_INClUDE_DIRS} /usr/include/dbus-1.0 /usr/include/ico-util ../src/)
+include_directories(${CMAKE_SOURCE_DIR}/lib ${include_dirs} ${gio_INCLUDE_DIRS} ${gio-unix_INCLUDE_DIRS} ${ambd_INCLUDE_DIRS} ${appcore-efl_INCLUDE_DIRS}  ${elementary_INCLUDE_DIRS} /usr/include/ico-util ../src/)
 
 set(VICCommon_sources ../src/standardmessage.cc ../src/datamessage.cc ../src/eventmessage.cc controlwebsocketclient.cc)
 set(Common_sources ../src/abstractconfig.cc ../src/ambconfig.cc logresult.cc)
@@ -19,6 +19,6 @@ target_link_libraries(VICSeq ${link_libraries} ${gio_LIBRARIES} ${gio-unix_LIBRA
 add_executable(VICReset ${VICReset_sources})
 target_link_libraries(VICReset ${link_libraries} ${gio_LIBRARIES} ${gio-unix_LIBRARIES} -lico-util)
 add_executable(DBustest1 ${DBustest1_sources})
-target_link_libraries(DBustest1 ${link_libraries} ${elementary_LIBRARIES} ${ecore_LIBRARIES} ${appcore-efl_LIBRARIES} ${edbus_LIBRARIES} -lico-util)
+target_link_libraries(DBustest1 ${link_libraries} ${elementary_LIBRARIES} ${appcore-efl_LIBRARIES} -lico-util)
 add_executable(DBustest3 ${DBustest3_sources})
-target_link_libraries(DBustest3 ${link_libraries} ${elementary_LIBRARIES} ${ecore_LIBRARIES} ${appcore-efl_LIBRARIES} ${edbus_LIBRARIES} -lico-util)
+target_link_libraries(DBustest3 ${link_libraries} ${elementary_LIBRARIES} ${appcore-efl_LIBRARIES} -lico-util)
