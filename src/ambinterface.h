@@ -206,7 +206,7 @@ public:
      * Unused virtual function.
      */
     void
-    supportedChanged(PropertyList)
+    supportedChanged(const PropertyList &)
     {
     }
 

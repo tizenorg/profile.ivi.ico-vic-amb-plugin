@@ -213,7 +213,7 @@ AMBIF::initialize(VICCommunicator *comm, AMBConfig *conf)
                        << "\n";
         }
     }
-    routingEngine->setSupported(supported(), this);
+    routingEngine->updateSupported(supported(), PropertyList(), this);
     DebugOut(1) << "INFO CHG_VIC_INF The number of AMB vehicle info is " << vehicleinfoArray.size() << ".\n";
     return true;
 }
