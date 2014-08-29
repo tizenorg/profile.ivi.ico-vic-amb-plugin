@@ -325,6 +325,7 @@ AMBIF::requestUpdate(AMBVehicleInfo *vehicleinfo)
                << vehicleinfo->name << "\n";
     if (find(vehicleinfo->name) != NULL) {
         vehicleinfo->value->zone = vehicleinfo->zone;
+        vehicleinfo->value->priority = AbstractPropertyType::Instant;
         DebugOut(50) << "AMBIF requestUpdate request property name is "
                    << vehicleinfo->name << ", zone is " << vehicleinfo->zone << "\n";
         updateProperty(vehicleinfo);
