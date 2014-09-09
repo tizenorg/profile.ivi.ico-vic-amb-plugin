@@ -15,9 +15,6 @@ add_definitions(-DPROJECT_VERSION="${PROJECT_VERSION}")
 add_definitions(-DPROJECT_NAME="${PROJECT_NAME}")
 add_definitions(-DLATER1024)
 
-set (LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)" )
-set (LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/${CMAKE_LIBRARY_ARCHITECTURE}" CACHE STRING "Directory where lib will install")
-
 include (CMakeForceCompiler)
 option(ENABLE_ICECC "Enable icecc checking, for distributed compilation" OFF)
 

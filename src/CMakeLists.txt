@@ -8,7 +8,7 @@ add_library(vehicleplugin MODULE ${vehicleplugin_sources})
 set_target_properties(vehicleplugin PROPERTIES PREFIX "")
 target_link_libraries(vehicleplugin amb websockets -L${CMAKE_CURRENT_BINARY_DIR}/lib ${link_libraries} -lico-util)
 
-install(TARGETS vehicleplugin LIBRARY DESTINATION lib/automotive-message-broker)
+install(TARGETS vehicleplugin LIBRARY DESTINATION ${LIB_INSTALL_DIR}/automotive-message-broker)
 
 set(ico-vic-amb-plugin-conf_docs AMBformat.conf)
 install (FILES ${ico-vic-amb-plugin-conf_docs} DESTINATION ${CONF_INSTALL_DIR})
