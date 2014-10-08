@@ -1,6 +1,6 @@
 include(CheckIncludeFiles)
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
-include_directories(${CMAKE_SOURCE_DIR}/lib ${include_dirs} ${gio_INCLUDE_DIRS} ${gio-unix_INCLUDE_DIRS} ${ambd_INCLUDE_DIRS} ${appcore-efl_INCLUDE_DIRS}  ${elementary_INCLUDE_DIRS} /usr/include/ico-util ../src/)
+include_directories(${CMAKE_SOURCE_DIR}/lib ${include_dirs} ${gio_INCLUDE_DIRS} ${gio-unix_INCLUDE_DIRS} ${ambd_INCLUDE_DIRS} ${appcore-efl_INCLUDE_DIRS}  ${elementary_INCLUDE_DIRS} ${ICO_UTIL_INCLUDE_DIR} ../src/)
 
 set(VICCommon_sources ../src/standardmessage.cc ../src/datamessage.cc ../src/eventmessage.cc controlwebsocketclient.cc)
 set(Common_sources ../src/abstractconfig.cc ../src/ambconfig.cc logresult.cc)

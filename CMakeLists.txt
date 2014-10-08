@@ -36,6 +36,9 @@ pkg_check_modules(json REQUIRED json)
 pkg_check_modules(ambd REQUIRED automotive-message-broker)
 pkg_check_modules(elementary REQUIRED elementary)
 pkg_check_modules(appcore-efl REQUIRED appcore-efl)
+pkg_check_modules(dbus REQUIRED dbus-1)
+
+FIND_FILE(ICO_UTIL_INCLUDE_DIR ico-util)
 
 set(include_dirs ${libtool_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${json_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/lib ${ambd_INCLUDE_DIRS})
 #set(link_libraries ${ambd_LIBRARIES} ${libtool_LIBRARY} ${json_LIBRARIES} -L${CMAKE_CURRENT_BINARY_DIR}/lib)
