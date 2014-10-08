@@ -1,50 +1,51 @@
 Name:       ico-vic-amb-plugin
-Summary:    Automotive Message Broker is a vehicle network abstraction system.
+Summary:    Automotive Message Broker is a vehicle network abstraction system
 Version:    0.9.5
-Release:    1.1
-Group:      System Environment/Daemons
-License:    LGPL v2.1
-URL:        ""
+Release:    0
+Group:      Automotive/ICO Homescreen
+License:    LGPL-2.1
 Source0:    %{name}-%{version}.tar.bz2
-Requires(post): /sbin/ldconfig
+Source1001: ico-vic-amb-plugin.manifest
+
+Requires(post):   /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
-Requires:   libjson
-Requires:  ico-uxf-utilities
+Requires:       ico-uxf-utilities
 BuildRequires:  cmake
 BuildRequires:  boost-devel
-BuildRequires:  libjson-devel
+BuildRequires:  pkgconfig(json)
 BuildRequires:  automotive-message-broker-devel >= 0.10.0
 BuildRequires:  ico-uxf-utilities-devel >= 0.9.04
 BuildRequires:  ico-uxf-utilities >= 0.9.04
-BuildRequires:	pkgconfig(elementary)
-BuildRequires:	pkgconfig(appcore-efl)
+BuildRequires:  pkgconfig(elementary)
+BuildRequires:  pkgconfig(appcore-efl)
 
 %description 
+Automotive Message Broker is a vehicle network abstraction system
 Collection of plugins for automotive-message-broker
 
 %prep
 %setup -q -n %{name}-%{version}
+cp %{SOURCE1001} .
 
 %build
 %cmake
-
-make %{?jobs:-j%jobs}
+%__make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/%{_sysconfdir}/ambd
-mkdir -p %{buildroot}/usr/bin
 cp src/AMBformat.conf %{buildroot}/%{_sysconfdir}/ambd/
-cp tool/ico_set_vehicleinfo %{buildroot}/usr/bin/ico_set_vehicleinfo
+mkdir -p %{buildroot}%{_bindir}
+cp tool/ico_set_vehicleinfo %{buildroot}%{_bindir}/ico_set_vehicleinfo
 
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
 
 %files
-%manifest %{name}.manifest
 %defattr(-,root,root,-)
+%manifest %{name}.manifest
 %{_libdir}/automotive-message-broker/*.so
-%{_sysconfdir}/ambd/AMBformat.conf
-/usr/share/doc/automotive-message-broker/%{name}/README
-/usr/bin/ico_set_vehicleinfo
+%config %{_sysconfdir}/ambd/AMBformat.conf
+%{_datadir}/doc/automotive-message-broker/%{name}/README
+%{_bindir}/ico_set_vehicleinfo
