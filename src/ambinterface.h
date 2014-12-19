@@ -211,7 +211,7 @@ public:
     }
 
 #if LATER1024
-    PropertyInfo getPropertyInfo(VehicleProperty::Property property);
+    PropertyInfo getPropertyInfo(const VehicleProperty::Property & property);
 #endif
 private:
     bool
