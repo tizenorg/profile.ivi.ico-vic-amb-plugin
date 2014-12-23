@@ -76,7 +76,6 @@ create(AbstractRoutingEngine* routingengine, map<string, string> config)
     }
     return ambif;
 }
-
 AMBIF::AMBIF(AbstractRoutingEngine *engine,
              std::map<std::string, std::string> config) :
         AbstractSource(engine, config)
@@ -426,7 +425,7 @@ AMBIF::find(std::string propertyName)
 }
 
 #if LATER1024
-PropertyInfo AMBIF::getPropertyInfo(VehicleProperty::Property property) {
+PropertyInfo AMBIF::getPropertyInfo(const VehicleProperty::Property & property) {
     if (propertyInfoMap.find(property) != propertyInfoMap.end()) {
         return propertyInfoMap[property];
     }
