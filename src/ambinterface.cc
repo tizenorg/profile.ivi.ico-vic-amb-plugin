@@ -429,7 +429,7 @@ PropertyInfo AMBIF::getPropertyInfo(const VehicleProperty::Property & property) 
     if (propertyInfoMap.find(property) != propertyInfoMap.end()) {
         return propertyInfoMap[property];
     }
-    std::list<Zone::Type> zones;
+    Zone::ZoneList zones;
     AMBVehicleInfo vi;
     vi.name = property;
     std::vector<AMBVehicleInfo>::iterator itr, itr_idx, itr_end;
