@@ -18,6 +18,7 @@ BuildRequires:  ico-uxf-utilities-devel >= 0.9.04
 BuildRequires:  ico-uxf-utilities >= 0.9.04
 BuildRequires:  pkgconfig(elementary)
 BuildRequires:  pkgconfig(appcore-efl)
+BuildRequires:  sed
 
 %description 
 Automotive Message Broker is a vehicle network abstraction system
@@ -26,6 +27,7 @@ Collection of plugins for automotive-message-broker
 %prep
 %setup -q -n %{name}-%{version}
 cp %{SOURCE1001} .
+sed -i 's#LIBDIR#%{_libdir}/#' packaging.in/config.tizen-ico
 
 %build
 %cmake
@@ -34,8 +36,9 @@ cp %{SOURCE1001} .
 %install
 rm -rf %{buildroot}
 %make_install
-mkdir -p %{buildroot}/%{_sysconfdir}/ambd
+mkdir -p %{buildroot}%{_sysconfdir}/ambd/examples/
 cp src/AMBformat.conf %{buildroot}/%{_sysconfdir}/ambd/
+cp packaging.in/config.tizen-ico %{buildroot}%{_sysconfdir}/ambd/examples/config.tizen-ico
 mkdir -p %{buildroot}%{_bindir}
 cp tool/ico_set_vehicleinfo %{buildroot}%{_bindir}/ico_set_vehicleinfo
 
@@ -47,5 +50,6 @@ cp tool/ico_set_vehicleinfo %{buildroot}%{_bindir}/ico_set_vehicleinfo
 %manifest %{name}.manifest
 %{_libdir}/automotive-message-broker/*.so
 %config %{_sysconfdir}/ambd/AMBformat.conf
+%config %{_sysconfdir}/ambd/examples/config.tizen-ico
 %{_datadir}/doc/automotive-message-broker/%{name}/README
 %{_bindir}/ico_set_vehicleinfo
