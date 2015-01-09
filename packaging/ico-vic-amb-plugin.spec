@@ -42,8 +42,50 @@ cp packaging.in/config.tizen-ico %{buildroot}%{_sysconfdir}/ambd/examples/config
 mkdir -p %{buildroot}%{_bindir}
 cp tool/ico_set_vehicleinfo %{buildroot}%{_bindir}/ico_set_vehicleinfo
 
-%post -p /sbin/ldconfig
-%postun -p /sbin/ldconfig
+%post
+/sbin/ldconfig
+
+# update symlink if it exists
+if [ -L "%{_sysconfdir}/ambd/config.tizen" ]; then
+  echo "updating AMB symlink config.tizen -> examples/config.tizen-ico"
+  ln -sf "%{_sysconfdir}/ambd/examples/config.tizen-ico" "%{_sysconfdir}/ambd/config.tizen"
+# otherwise create the symlink and move the old config to safety
+else
+  # move the old config to safety if we have such a file
+  if [ -f "%{_sysconfdir}/ambd/config.tizen" ]; then
+    echo "moving original AMB config.tizen -> config.tizen.orig"
+    mv "%{_sysconfdir}/ambd/config.tizen" "%{_sysconfdir}/ambd/config.tizen.orig"
+  fi
+  echo "creating AMB symlink config.tizen -> examples/config.tizen-ico"
+  ln -sf "%{_sysconfdir}/ambd/examples/config.tizen-ico" "%{_sysconfdir}/ambd/config.tizen"
+fi
+
+/bin/systemctl daemon-reload
+/bin/systemctl restart ambd
+
+%preun
+
+# if the AMB config file is a symlink or if we lack a config file
+if [ -L "%{_sysconfdir}/ambd/config.tizen" ] || [ ! -f "%{_sysconfdir}/ambd/config.tizen" ]; then
+  # restore backed up config if found
+  if [ -f "%{_sysconfdir}/ambd/config.tizen.orig" ]; then
+    echo "restoring AMB config file config.tizen.orig as config.tizen"
+    mv "%{_sysconfdir}/ambd/config.tizen.orig" "%{_sysconfdir}/ambd/config.tizen"
+  # otherwise restore AMB packaged config if found
+  elif [ -f "%{_sysconfdir}/ambd/examples/config.tizen" ]; then
+    echo "restoring default AMB symlink config.tizen -> examples/config.tizen"
+    ln -sf "%{_sysconfdir}/ambd/examples/config.tizen" "%{_sysconfdir}/ambd/config.tizen"
+  # and if we have a symlink but neither a backup or
+  # the original config, we do nothing
+  fi
+# the last alternative is that the file exists.
+# this should not happen so we do nothing.
+fi
+
+%postun
+/sbin/ldconfig
+/bin/systemctl daemon-reload
+/bin/systemctl restart ambd
 
 %files
 %defattr(-,root,root,-)
