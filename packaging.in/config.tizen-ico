@@ -1,0 +1,23 @@
+{
+"sources" :
+	[
+		{
+			"name" : "Murphy Source",
+			"path" : "LIBDIR/automotive-message-broker/murphysourceplugin.so",
+			"address" : "unxs:/tmp/murphy/amb"
+		},
+		{
+			"name" : "VehicleSource",
+			"path" : "LIBDIR/automotive-message-broker/vehicleplugin.so",
+			"configfile" : "/etc/ambd/AMBformat.conf"
+		}
+	],
+"sinks":
+	[
+		{
+			"name" : "DBusSink",
+			"path" : "LIBDIR/automotive-message-broker/dbussinkplugin.so"
+		}
+	]
+}
+
